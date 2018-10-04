@@ -3,7 +3,7 @@ import {FlaggerBase} from './index'
 export default class AirshipLegacy {
   constructor(options) {
     this.envKey = options.envKey
-    this.airship = new AirshipBase()
+    this.airship = new FlaggerBase()
   }
 
   async init() {

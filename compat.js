@@ -6,12 +6,15 @@ var Ajv = _interopDefault(require('ajv'));
 var ajvErrors = _interopDefault(require('ajv-errors'));
 var md5 = _interopDefault(require('md5'));
 var stringify = _interopDefault(require('fast-json-stable-stringify'));
-require('eventsource');
-require('superagent');
+var EventSource = _interopDefault(require('eventsource'));
+var request = _interopDefault(require('superagent'));
 
 let logger = x => {
   console.error(x);
 };
+function setLogger(fn) {
+  logger = fn;
+}
 
 function _defineProperty(obj, key, value) {
   if (key in obj) {
@@ -926,6 +929,130 @@ class Environment {
 }
 
 // Based on https://chrisrng.svbtle.com/lru-cache-in-javascript
+class LRUNode {
+  constructor(key, value) {
+    if (typeof key === 'undefined' || key === null) {
+      throw 'Cannot have an undefined or null key for a LRUNode';
+    }
+
+    if (typeof value === 'undefined' || value === null) {
+      throw 'Cannot have an undefined or null value for a LRUNode';
+    }
+
+    this.key = key;
+    this.value = value;
+    this.prev = null;
+    this.next = null;
+  }
+
+}
+
+class LRU {
+  constructor(limit) {
+    this.size = 0;
+
+    if (typeof limit === 'number') {
+      this.limit = limit;
+    } else {
+      this.limit = 10;
+    }
+
+    this.map = {};
+    this.head = null;
+    this.tail = null;
+  }
+
+  setHead(node) {
+    node.next = this.head;
+    node.prev = null;
+
+    if (this.head !== null) {
+      this.head.prev = node;
+    }
+
+    this.head = node;
+
+    if (this.tail === null) {
+      this.tail = node;
+    }
+
+    this.size++;
+    this.map[node.key] = node;
+  }
+
+  set(key, value) {
+    const node = new LRUNode(key, value);
+
+    if (this.map[key]) {
+      this.map[key].value = node.value;
+      this.remove(node.key);
+    } else {
+      if (this.size >= this.limit) {
+        delete this.map[this.tail.key];
+        this.size--;
+        this.tail = this.tail.prev;
+        this.tail.next = null;
+      }
+    }
+
+    this.setHead(node);
+  }
+
+  get(key) {
+    if (this.map[key]) {
+      const value = this.map[key].value;
+      const node = new LRUNode(key, value);
+      this.remove(key);
+      this.setHead(node);
+      return value;
+    } else {
+      // console.log('Key ' + key + ' does not exist in the cache.')
+      return null; // Return null because null cannot be a LRUNode value
+    }
+  }
+
+  remove(key) {
+    const node = this.map[key];
+
+    if (node.prev !== null) {
+      node.prev.next = node.next;
+    } else {
+      this.head = node.next;
+    }
+
+    if (node.next !== null) {
+      node.next.prev = node.prev;
+    } else {
+      this.tail = node.prev;
+    }
+
+    delete this.map[key];
+    this.size--;
+  }
+
+  removeAll(limit) {
+    this.size = 0;
+    this.map = {};
+    this.head = null;
+    this.tail = null;
+
+    if (typeof limit === 'number') {
+      this.limit = limit;
+    }
+  }
+
+  forEach(callback) {
+    let node = this.head;
+    let i = 0;
+
+    while (node) {
+      callback(node, i);
+      i++;
+      node = node.next;
+    }
+  }
+
+}
 
 class Flag {
   constructor(flag, delegate) {
@@ -1104,6 +1231,309 @@ class Router {
 
   isLocallyConfigured() {
     return this.getEnv().envKey === null;
+  }
+
+}
+
+var version = "2.0.1";
+
+const SERVER_URL = 'https://api.airshiphq.com';
+const IDENTIFY_ENDPOINT = `${SERVER_URL}/v2/identify`;
+const GATING_INFO_ENDPOINT = `${SERVER_URL}/v2/gating-info`;
+const SSE_URL = 'https://sse.airshiphq.com';
+const SSE_GATING_INFO_ENDPOINT = `${SSE_URL}/v2/sse-events`;
+const CLOUD_FRONT_URL = 'https://backup-api.airshiphq.com';
+const CLOUD_FRONT_GATING_INFO_ENDPOINT = `${CLOUD_FRONT_URL}/v2/gating-info`;
+const REQUEST_TIMEOUT = 10 * 1000;
+class Airship extends Environment {
+  constructor(gatingInfoListener) {
+    super();
+    this.gatingInfoListener = gatingInfoListener;
+  }
+
+  init() {
+    this.ingestionMaxItems = 500;
+    this.ingestionInterval = 30 * 1000;
+    this.objects = [];
+    this.stats = [];
+    this.exposures = [];
+    this.flags = new Set();
+    this.oldFlags = new Set();
+    this.objectLRUCache = new LRU(500);
+    this.firstIngestion = true;
+    this.restartIngestionWorker();
+  }
+
+  restartIngestionWorker() {
+    if (this.ingestionWorker) {
+      clearInterval(this.ingestionWorker);
+    }
+
+    this.ingestionWorker = setInterval(() => {
+      this.maybeIngest(true);
+    }, this.ingestionInterval);
+  }
+
+  async maybeIngest(force = false) {
+    let shouldIngest = force || this.objects.length >= this.ingestionMaxItems || this.stats.length >= this.ingestionMaxItems || this.exposures.length >= this.ingestionMaxItems || this.flags.size > 0;
+
+    if (this.firstIngestion) {
+      shouldIngest = shouldIngest || this.objects.length > 0;
+      this.firstIngestion = !shouldIngest;
+    }
+
+    if (this.objects.length === 0 && this.stats.length === 0 && this.exposures.length === 0 && this.flags.size === 0) {
+      shouldIngest = false;
+    }
+
+    if (shouldIngest) {
+      const objects = this.objects;
+      const stats = this.stats;
+      const exposures = this.exposures;
+      const flags = Array.from(this.flags);
+      flags.forEach(flagName => {
+        this.oldFlags.add(flagName);
+      });
+      this.objects = [];
+      this.stats = [];
+      this.exposures = [];
+      this.flags = new Set();
+      await request.post(IDENTIFY_ENDPOINT + '/' + this.envKey).type('application/json').timeout(REQUEST_TIMEOUT).send({
+        objects: objects,
+        stats: stats.map(s => s.getStatsObj()).filter(so => so !== null),
+        exposures: exposures,
+        flags: flags,
+        sdkInfo: {
+          name: 'nodejs-v1',
+          version: version
+        }
+      }).then(res => {
+        if (!res.ok) {
+          logger('Something went wrong. Ingestion failed');
+        }
+      }).catch(err => {
+        logger(err.message);
+      });
+    }
+  }
+
+  _identifyObject(obj) {
+    const airshipObj = Environment.prototype._identifyObject.call(this, obj);
+
+    if (!airshipObj.isValid()) {
+      return airshipObj;
+    }
+
+    const id = airshipObj.getId();
+    const hash = airshipObj.getHash();
+    const storedHash = this.objectLRUCache.get(id);
+
+    if (storedHash === null || hash !== storedHash) {
+      this.objects.push(airshipObj.getRawObject());
+    }
+
+    this.objectLRUCache.set(id, hash);
+    this.maybeIngest();
+    return airshipObj;
+  }
+
+  _compactStats() {
+    this.stats = Stat.compactStats(this.stats);
+  }
+
+  _saveStat(stat) {
+    this.stats.push(stat);
+
+    if (this.stats.length >= this.ingestionMaxItems) {
+      this._compactStats();
+    }
+
+    this.maybeIngest();
+  }
+
+  _saveExposure(expo) {
+    this.exposures.push(expo);
+    this.maybeIngest();
+  }
+
+  async publish(objs) {
+    if (!Array.isArray(objs)) {
+      logger('The "publish" method takes an array of objects (aka entities).');
+      return;
+    }
+
+    objs.forEach(obj => {
+      this._identifyObject(obj);
+    });
+    await this.maybeIngest(true);
+  }
+
+  async _getGatingInfo() {
+    return request.get(`${GATING_INFO_ENDPOINT}/${this.envKey}?casing=camel`).timeout(REQUEST_TIMEOUT);
+  }
+
+  async _getGatingInfoFromCloudFront() {
+    return request.get(`${CLOUD_FRONT_GATING_INFO_ENDPOINT}/${this.envKey}-camel`).timeout(REQUEST_TIMEOUT);
+  }
+
+  updateSDK() {
+    const ingestionMaxItems = this.router.getIngestionMaxItem();
+    const ingestionInterval = this.router.getIngestionInterval();
+
+    if (typeof ingestionMaxItems === 'number' && ingestionMaxItems > 0) {
+      this.ingestionMaxItems = ingestionMaxItems;
+    }
+
+    if (typeof ingestionInterval === 'number' && ingestionInterval > 0 && ingestionInterval != this.ingestionInterval) {
+      this.ingestionInterval = ingestionInterval;
+      this.restartIngestionWorker();
+    }
+  }
+
+  async configure(envKey, subscribeToUpdates = true) {
+    const envKeyRegex = /^[a-z0-9]{16}$/;
+
+    if (!envKey.match(envKeyRegex)) {
+      throw 'options["envKey"] should be a string of lowercase characters and digits. Double check on the Airship web app.';
+    }
+
+    this.envKey = envKey;
+    this.init();
+    let success = false; // First try our server
+
+    try {
+      const stat = new Stat('duration__gating_info', Stat.TYPE_DURATION);
+      stat.start();
+      const result = await this._getGatingInfo();
+      const gatingInfo = result.body;
+      this.router = new Router(gatingInfo);
+      this.updateSDK();
+
+      if (this.gatingInfoListener) {
+        this.gatingInfoListener(gatingInfo);
+      }
+
+      success = true;
+      stat.stop();
+
+      this._saveStat(stat);
+    } catch (err) {
+      logger(err);
+      success = false;
+    } // Next try CloudFront distribution
+
+
+    if (!success) {
+      try {
+        const stat = new Stat('duration__cloudfront_gating_info', Stat.TYPE_DURATION);
+        stat.start();
+        const result = await this._getGatingInfoFromCloudFront();
+        const gatingInfo = result.body;
+        this.router = new Router(gatingInfo);
+        this.updateSDK();
+
+        if (this.gatingInfoListener) {
+          this.gatingInfoListener(gatingInfo);
+        }
+
+        success = true;
+        stat.stop();
+
+        this._saveStat(stat);
+      } catch (err) {
+        logger(err);
+        success = false;
+      }
+    }
+
+    if (!success) {
+      throw 'Failed to retrieve initial gating information';
+    }
+
+    if (subscribeToUpdates) {
+      this._subscribeToUpdates();
+
+      this._policeSSE();
+    }
+  }
+
+  async shutdown() {
+    if (this.ingestionWorker) {
+      clearInterval(this.ingestionWorker);
+    }
+
+    this._unpoliceSSE();
+
+    this._unsubscribeFromUpdates();
+
+    await this.maybeIngest(true);
+  }
+
+  flag(flagName) {
+    const flag = Environment.prototype.flag.call(this, flagName);
+
+    if (flag.isWild()) {
+      // Register the new uncategorized flag
+      if (!this.oldFlags.has(flagName)) {
+        this.flags.add(flagName);
+        this.maybeIngest();
+      }
+    }
+
+    return flag;
+  }
+
+  _policeSSE() {
+    this._unpoliceSSE();
+
+    this.policeSSEInterval = setInterval(() => {
+      const now = Date.now();
+      const then = this.lastSSEConnectTimestamp || Date.now();
+
+      if ((now - then) / 1000 > 30) {
+        logger('Did not receive a keepalive for more than 30 seconds. Reconnecting.');
+
+        this._subscribeToUpdates();
+      }
+    }, 5 * 1000);
+  }
+
+  _unpoliceSSE() {
+    if (this.policeSSEInterval) {
+      clearInterval(this.policeSSEInterval);
+      delete this.policeSSEInterval;
+
+      if (this.lastSSEConnectTimestamp) {
+        delete this.lastSSEConnectTimestamp;
+      }
+    }
+  }
+
+  _subscribeToUpdates() {
+    this._unsubscribeFromUpdates();
+
+    this.eventSource = new EventSource(`${SSE_GATING_INFO_ENDPOINT}?envkey=${this.envKey}&casing=camel`);
+    this.eventSource.addEventListener('gatingInfoUpdate', evt => {
+      const gatingInfo = JSON.parse(evt.data);
+      this.router = new Router(gatingInfo);
+      this.updateSDK();
+
+      if (this.gatingInfoListener) {
+        this.gatingInfoListener(gatingInfo);
+      }
+
+      this.lastSSEConnectTimestamp = Date.now();
+    });
+    this.eventSource.addEventListener('keepalive', evt => {
+      this.lastSSEConnectTimestamp = Date.now();
+    });
+  }
+
+  _unsubscribeFromUpdates() {
+    if (this.eventSource) {
+      this.eventSource.close();
+      delete this.eventSource;
+    }
   }
 
 }
@@ -1388,11 +1818,100 @@ class Core extends Environment {
 
 const defaultEnv = new Core();
 defaultEnv.configure({});
+class FlaggerBase {
+  constructor() {
+    this.gatingInfoListeners = [];
+  }
+
+  static _isDict(obj) {
+    return obj !== undefined && obj !== null && obj.constructor === Object;
+  }
+
+  async publish(objs) {
+    if (this.environment) {
+      await this.environment.publish(objs);
+    } else {
+      throw 'Airship must be configured first before `publish` can be called';
+    }
+  } // This will allow for async/await
+
+
+  async configure(options) {
+    if (!FlaggerBase._isDict(options)) {
+      throw '<options> must be dictionary';
+    }
+
+    const envKey = options.envKey;
+    const flagConfig = options.flagConfig;
+
+    if (!envKey && !flagConfig) {
+      throw '<options> must contain envKey corresponding to an environment key or a flagConfig dictionary';
+    }
+
+    if (envKey) {
+      if (this.environment) {
+        await this.environment.shutdown();
+      }
+
+      this.environment = new Airship(this.handleGatingInfoUpdate.bind(this));
+      await this.environment.configure(envKey, options.subscribeToUpdates);
+    } else {
+      if (this.environment) {
+        await this.environment.shutdown();
+      }
+
+      this.environment = new Core();
+      await this.environment.configure(flagConfig);
+    }
+  }
+
+  async shutdown() {
+    if (this.environment) {
+      await this.environment.shutdown();
+      delete this.environment;
+    } else {
+      throw 'Airship must be configured first before `shutdown` can be called';
+    }
+  }
+
+  flag(flagName) {
+    return (this.environment || defaultEnv).flag(flagName);
+  }
+
+  setErrorListener(fn) {
+    setLogger(fn);
+  }
+
+  handleGatingInfoUpdate(gatingInfo) {
+    this.gatingInfoListeners.forEach(listener => listener(gatingInfo));
+  }
+
+  addGatingInfoListener(listener) {
+    this.gatingInfoListeners.push(listener);
+  }
+
+  removeGatingInfoListener(listener) {
+    this.gatingInfoListeners = this.gatingInfoListeners.filter(l => l !== listener);
+  }
+
+  identify(obj) {
+    if (this.environment) {
+      this.environment.identify(obj);
+
+      this.environment._identifyObject(obj);
+
+      this.environment.maybeIngest(true);
+    } else {
+      throw 'Airship must be configured first before `identify` can be called';
+    }
+  }
+
+}
 
 class AirshipLegacy {
   constructor(options) {
     this.envKey = options.envKey;
-    this.airship = new AirshipBase();
+    this.airship = new FlaggerBase();
   }
 
   async init() {

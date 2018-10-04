@@ -47,8 +47,8 @@ export default [
   {
     input: 'src/index-umd.js',
     output: {
-      file: 'airship.js',
-      name: 'Airship',
+      file: 'flagger.js',
+      name: 'Flagger',
       format: 'umd',
       exports: 'default',
       sourcemap: true
@@ -96,8 +96,8 @@ export default [
   {
     input: 'src/react.js',
     output: {
-      file: 'airship-react.js',
-      name: 'AirshipReact',
+      file: 'flagger-react.js',
+      name: 'FlaggerReact',
       format: 'umd',
       sourcemap: true
     },
