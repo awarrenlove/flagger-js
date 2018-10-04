@@ -1,0 +1,17 @@
+# Dependency directory
+# https://www.npmjs.org/doc/misc/npm-faq.html#should-i-check-my-node_modules-folder-into-git-
+node_modules
+
+# Debug log from npm
+npm-debug.log
+
+# DS_STORE
+.DS_Store
+
+/esm.js
+/esm.js.map
+/cjs.js
+/cjs.js.map
+/react.js
+/react.js.map
+/cdn

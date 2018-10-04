@@ -1,0 +1,11 @@
+{
+  "name": "airship-js",
+  "description": "JavaScript SDK",
+  "main": ["airship.js", "airship-react.js"],
+  "version": "2.0.0",
+  "authors": ["Airship Support <support@airshiphq.com>"],
+  "license": "MIT",
+  "keywords": ["feature", "flag", "airship"],
+  "homepage": "https://github.com/airshiphq/airship-js",
+  "ignore": ["**/.*", "node_modules", "bower_components", "test", "tests"]
+}
