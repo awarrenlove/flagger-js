@@ -149,7 +149,7 @@ export default [
     input: 'src/compat.js',
     output: {
       file: 'compat-browser.js',
-      name: 'Flagger',
+      name: 'Airship',
       format: 'umd',
       sourcemap: true
     },
