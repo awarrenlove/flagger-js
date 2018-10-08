@@ -15,3 +15,5 @@ npm-debug.log
 /react.js
 /react.js.map
 /cdn
+
+coverage/
