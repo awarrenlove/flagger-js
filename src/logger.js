@@ -1,4 +1,5 @@
 export let logger = x => {
+  // eslint-disable-next-line no-console
   console.error(x)
 }
 

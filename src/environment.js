@@ -21,7 +21,7 @@ export default class Environment {
 
   _saveExposure() {}
 
-  async publish(objs) {}
+  async publish() {}
 
   shutdown() {}
 

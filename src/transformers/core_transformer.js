@@ -86,7 +86,7 @@ export const transformFlagConfig = flagConfig => {
       flagType: 'basic',
       hashKey: key,
       isPaused: !active,
-      isWebAccessible: __BROWSER__,
+      isWebAccessible: __BROWSER__, // eslint-disable-line no-undef
       codename: key,
       flagStatus: 'operational'
     }

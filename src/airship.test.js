@@ -895,7 +895,7 @@ test('whitelist group treatment takes precedence over individual sampling', () =
 
 test('gate call should have non-null stat', () => {
   environment2.flag('bitcoin-pay').isEnabled({id: 1})
-  expect(environment2.stats.length).toEqual(1)
+  expect(environment2.stats).toHaveLength(1)
   expect(environment2.stats[0] instanceof Stat).toEqual(true)
   const statObj = environment2.stats[0].getStatsObj()
   expect(statObj).not.toBe(null)
@@ -905,9 +905,9 @@ test('gate call should have non-null stat', () => {
 test('same gate calls should produce stats that can be combined', () => {
   environment2.flag('bitcoin-pay').isEnabled({id: 1})
   environment2.flag('bitcoin-pay').isEnabled({id: 1})
-  expect(environment2.stats.length).toEqual(2)
+  expect(environment2.stats).toHaveLength(2)
   environment2._compactStats()
-  expect(environment2.stats.length).toEqual(1)
+  expect(environment2.stats).toHaveLength(1)
   expect(environment2.stats[0] instanceof Stat).toEqual(true)
   const statObj = environment2.stats[0].getStatsObj()
   expect(statObj).not.toBe(null)

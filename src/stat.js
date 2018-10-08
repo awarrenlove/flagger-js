@@ -11,16 +11,14 @@ export default class Stat {
 
     return Object.values(groups).map(stats => {
       const newStat = new Stat(stats[0].name, stats[0].type)
+      let totalDuration, totalCount
       switch (newStat.type) {
         case Stat.TYPE_DURATION:
-          const totalDuration = stats.reduce(
+          totalDuration = stats.reduce(
             (duration, stat) => duration + stat.averageDuration * stat.count,
             0
           )
-          const totalCount = stats.reduce(
-            (count, stat) => count + stat.count,
-            0
-          )
+          totalCount = stats.reduce((count, stat) => count + stat.count, 0)
           newStat.setAverageDuration(totalDuration / totalCount)
           newStat.setCount(totalCount)
           break

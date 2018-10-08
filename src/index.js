@@ -2,11 +2,6 @@ import {setLogger} from './logger'
 import Airship from './airship'
 import Core from './core'
 
-const PLATFORM = 'nodejs'
-const VERSION = '2.0.0'
-
-const SDK_VERSION = `${PLATFORM}:${VERSION}`
-
 const defaultEnv = new Core()
 defaultEnv.configure({})
 
