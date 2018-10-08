@@ -880,9 +880,6 @@ test('`bitcoin-pay` is not enabled for object 10 due to age requirement using re
 })
 
 test('`bitcoin-pay` gives treatment of `variation-2` and there is one exposure', async () => {
-  nockCloud2()
-  nock.disableNetConnect()
-  await environment2.configure('z2veg4bd2vnuu8j8')
   environment2.flag('bitcoin-pay').getTreatment({id: 1})
   expect(environment2.exposures).toMatchSnapshot()
 })
