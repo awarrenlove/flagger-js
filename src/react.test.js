@@ -115,9 +115,9 @@ afterAll(() => {
   nock.enableNetConnect()
 })
 
-test('withFlag adds flagEnabled property', () => {
+test('withFlag adds flags.<name>.enabled property', () => {
   function TestComponent(props) {
-    return <div>{props.flagEnabled.toString()}</div>
+    return <div>{props.flags['bitcoin-pay'].enabled.toString()}</div>
   }
 
   const WrappedComponent = withFlag(TestComponent, 'bitcoin-pay')
@@ -127,9 +127,9 @@ test('withFlag adds flagEnabled property', () => {
   expect(component.toJSON()).toMatchSnapshot()
 })
 
-test('withFlag adds flagEligible property', () => {
+test('withFlag adds flags.<name>.eligible property', () => {
   function TestComponent(props) {
-    return <div>{props.flagEligible.toString()}</div>
+    return <div>{props.flags['bitcoin-pay'].eligible.toString()}</div>
   }
 
   const WrappedComponent = withFlag(TestComponent, 'bitcoin-pay')
@@ -139,9 +139,9 @@ test('withFlag adds flagEligible property', () => {
   expect(component.toJSON()).toMatchSnapshot()
 })
 
-test('withFlag adds flagTreatment property', () => {
+test('withFlag adds flags.<name>.treatment property', () => {
   function TestComponent(props) {
-    return <div>{props.flagTreatment.toString()}</div>
+    return <div>{props.flags['bitcoin-pay'].treatment.toString()}</div>
   }
   const WrappedComponent = withFlag(TestComponent, 'bitcoin-pay')
 
@@ -150,9 +150,9 @@ test('withFlag adds flagTreatment property', () => {
   expect(component.toJSON()).toMatchSnapshot()
 })
 
-test('withFlag adds flagPayload property', () => {
+test('withFlag adds flags.<name>.payload property', () => {
   function TestComponent(props) {
-    return <div>{JSON.stringify(props.flagPayload)}</div>
+    return <div>{JSON.stringify(props.flags['bitcoin-pay'].payload)}</div>
   }
   const WrappedComponent = withFlag(TestComponent, 'bitcoin-pay')
 
@@ -163,7 +163,7 @@ test('withFlag adds flagPayload property', () => {
 
 test('withFlag wrapped components accept entity prop', () => {
   function TestComponent(props) {
-    return <div>{props.flagEnabled.toString()}</div>
+    return <div>{props.flags['bitcoin-pay'].enabled.toString()}</div>
   }
   const WrappedComponent = withFlag(TestComponent, 'bitcoin-pay')
 

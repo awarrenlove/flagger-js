@@ -8,25 +8,25 @@ exports[`Flag can override flag prop from FlagSwitch 1`] = `"Default"`;
 
 exports[`FlagSwitch accepts entity prop 1`] = `"Off!"`;
 
-exports[`withFlag adds flagEligible property 1`] = `
+exports[`withFlag adds flags.<name>.eligible property 1`] = `
 <div>
   true
 </div>
 `;
 
-exports[`withFlag adds flagEnabled property 1`] = `
+exports[`withFlag adds flags.<name>.enabled property 1`] = `
 <div>
   true
 </div>
 `;
 
-exports[`withFlag adds flagPayload property 1`] = `
+exports[`withFlag adds flags.<name>.payload property 1`] = `
 <div>
   {"a":"b"}
 </div>
 `;
 
-exports[`withFlag adds flagTreatment property 1`] = `
+exports[`withFlag adds flags.<name>.treatment property 1`] = `
 <div>
   on
 </div>

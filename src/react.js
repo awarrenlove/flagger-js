@@ -59,7 +59,7 @@ FlagProvider.defaultProps = {
   subscribeToUpdates: false
 }
 
-export function withFlag(WrappedComponent, flagName) {
+export function withFlag(WrappedComponent, ...flagNames) {
   return class FlaggedComponent extends React.Component {
     componentDidMount() {
       Airship.addGatingInfoListener(this.handleChange)
@@ -74,35 +74,31 @@ export function withFlag(WrappedComponent, flagName) {
     }
 
     render() {
-      if (!flagName) {
+      if (flagNames.length === 0) {
         // eslint-disable-next-line no-console
         console.warn('withFlag did not receive a valid flag name')
-        return (
-          <WrappedComponent
-            flagEnabled={false}
-            flagEligible={false}
-            flagTreatment={'off'}
-            flagPayload={null}
-            {...this.props}
-          />
-        )
+        return <WrappedComponent flags={{}} {...this.props} />
       }
 
-      const flag = Airship.flag(flagName)
-      const enabled = flag.isEnabled(this.props.entity)
-      const eligible = flag.isEligible(this.props.entity)
-      const treatment = flag.getTreatment(this.props.entity)
-      const payload = flag.getPayload(this.props.entity)
+      const flags = flagNames.reduce((flags, flagName) => {
+        const flag = Airship.flag(flagName)
+        const enabled = flag.isEnabled(this.props.entity)
+        const eligible = flag.isEligible(this.props.entity)
+        const treatment = flag.getTreatment(this.props.entity)
+        const payload = flag.getPayload(this.props.entity)
 
-      return (
-        <WrappedComponent
-          flagEnabled={enabled}
-          flagEligible={eligible}
-          flagTreatment={treatment}
-          flagPayload={payload}
-          {...this.props}
-        />
-      )
+        return {
+          ...flags,
+          [flagName]: {
+            enabled,
+            eligible,
+            treatment,
+            payload
+          }
+        }
+      }, {})
+
+      return <WrappedComponent flags={flags} {...this.props} />
     }
   }
 }
