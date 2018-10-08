@@ -21,7 +21,7 @@ export default class Environment {
 
   _saveExposure() {}
 
-  async publish() {}
+  async publish(objs) {} // eslint-disable-line no-unused-vars
 
   shutdown() {}
 
