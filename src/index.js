@@ -45,7 +45,9 @@ export class FlaggerBase {
       ) {
         await this.environmentPromise
       } else {
-        await this.environment.shutdown()
+        if (this.environment) {
+          await this.environment.shutdown()
+        }
         this.environment = new Airship(this.handleGatingInfoUpdate.bind(this))
         const promise = this.environment.configure(
           envKey,
