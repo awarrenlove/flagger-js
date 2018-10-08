@@ -219,7 +219,6 @@ export default class Airship extends Environment {
       this._saveStat(stat)
     } catch (err) {
       logger(err)
-      this.success = false
     }
 
     // Next try CloudFront distribution
