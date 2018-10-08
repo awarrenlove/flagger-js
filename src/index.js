@@ -37,10 +37,30 @@ export class FlaggerBase {
 
     if (envKey) {
       if (this.environment) {
-        await this.environment.shutdown()
+        if (
+          this.environment.envKey === envKey &&
+          this.environment.subscribeToUpdates === options.subscribeToUpdates
+        ) {
+          await this.environmentPromise
+        } else {
+          await this.environment.shutdown()
+          this.environment = new Airship(this.handleGatingInfoUpdate.bind(this))
+          const promise = this.environment.configure(
+            envKey,
+            options.subscribeToUpdates
+          )
+          await promise
+          this.environmentPromise = promise
+        }
+      } else {
+        this.environment = new Airship(this.handleGatingInfoUpdate.bind(this))
+        const promise = this.environment.configure(
+          envKey,
+          options.subscribeToUpdates
+        )
+        await promise
+        this.environmentPromise = promise
       }
-      this.environment = new Airship(this.handleGatingInfoUpdate.bind(this))
-      await this.environment.configure(envKey, options.subscribeToUpdates)
     } else {
       if (this.environment) {
         await this.environment.shutdown()

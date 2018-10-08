@@ -198,9 +198,10 @@ export default class Airship extends Environment {
     }
 
     this.envKey = envKey
+    this.subscribeToUpdates = subscribeToUpdates
     this.init()
 
-    let success = false
+    this.success = null
 
     // First try our server
     try {
@@ -213,16 +214,16 @@ export default class Airship extends Environment {
       if (this.gatingInfoListener) {
         this.gatingInfoListener(gatingInfo)
       }
-      success = true
+      this.success = true
       stat.stop()
       this._saveStat(stat)
     } catch (err) {
       logger(err)
-      success = false
+      this.success = false
     }
 
     // Next try CloudFront distribution
-    if (!success) {
+    if (!this.success) {
       try {
         const stat = new Stat(
           'duration__cloudfront_gating_info',
@@ -236,16 +237,16 @@ export default class Airship extends Environment {
         if (this.gatingInfoListener) {
           this.gatingInfoListener(gatingInfo)
         }
-        success = true
+        this.success = true
         stat.stop()
         this._saveStat(stat)
       } catch (err) {
         logger(err)
-        success = false
+        this.success = false
       }
     }
 
-    if (!success) {
+    if (!this.success) {
       throw 'Failed to retrieve initial gating information'
     }
 
