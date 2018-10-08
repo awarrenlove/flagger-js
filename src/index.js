@@ -22,6 +22,17 @@ export class FlaggerBase {
     }
   }
 
+  async _restart() {
+    await this.environment.shutdown()
+    this.environment = new Airship(this.handleGatingInfoUpdate.bind(this))
+    const promise = this.environment.configure(
+      envKey,
+      options.subscribeToUpdates
+    )
+    this.environmentPromise = promise
+    await promise
+  }
+
   // This will allow for async/await
   async configure(options) {
     if (!FlaggerBase._isDict(options)) {
@@ -39,40 +50,19 @@ export class FlaggerBase {
       if (this.environment) {
         if (
           this.environment.envKey === envKey &&
-          this.environment.subscribeToUpdates === options.subscribeToUpdates
+          this.environment.subscribeToUpdates === options.subscribeToUpdates &&
+          this.environment.environmentPromise
         ) {
           if (this.environment.success === false) {
-            await this.environment.shutdown()
-            this.environment = new Airship(
-              this.handleGatingInfoUpdate.bind(this)
-            )
-            const promise = this.environment.configure(
-              envKey,
-              options.subscribeToUpdates
-            )
-            await promise
-            this.environmentPromise = promise
+            await this._restart()
           } else {
             await this.environmentPromise
           }
         } else {
-          await this.environment.shutdown()
-          this.environment = new Airship(this.handleGatingInfoUpdate.bind(this))
-          const promise = this.environment.configure(
-            envKey,
-            options.subscribeToUpdates
-          )
-          await promise
-          this.environmentPromise = promise
+          await this._restart()
         }
       } else {
-        this.environment = new Airship(this.handleGatingInfoUpdate.bind(this))
-        const promise = this.environment.configure(
-          envKey,
-          options.subscribeToUpdates
-        )
-        await promise
-        this.environmentPromise = promise
+        await this._restart()
       }
     } else {
       if (this.environment) {
