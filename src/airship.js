@@ -319,7 +319,7 @@ export default class Airship extends Environment {
       this.lastSSEConnectTimestamp = Date.now()
     })
 
-    this.eventSource.addEventListener('keepalive', evt => {
+    this.eventSource.addEventListener('keepalive', () => {
       this.lastSSEConnectTimestamp = Date.now()
     })
   }

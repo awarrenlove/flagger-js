@@ -15,6 +15,7 @@
     "prepublishOnly": "npm run build",
     "build": "rollup -c",
     "test": "jest",
+    "lint": "eslint src",
     "clear_jest": "jest --clearCache"
   },
   "devDependencies": {

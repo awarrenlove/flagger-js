@@ -60,7 +60,7 @@ FlagProvider.defaultProps = {
 }
 
 export function withFlag(WrappedComponent, flagName) {
-  return class extends React.Component {
+  return class FlaggedComponent extends React.Component {
     componentDidMount() {
       Airship.addGatingInfoListener(this.handleChange)
     }
@@ -75,6 +75,7 @@ export function withFlag(WrappedComponent, flagName) {
 
     render() {
       if (!flagName) {
+        // eslint-disable-next-line no-console
         console.warn('withFlag did not receive a valid flag name')
         return (
           <WrappedComponent
@@ -146,6 +147,7 @@ export class Flag extends React.Component {
 
   render() {
     if (!this.props.flag) {
+      // eslint-disable-next-line no-console
       console.warn('<Flag> component missing flag name')
       return null
     }
