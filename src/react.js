@@ -74,7 +74,7 @@ export function withFlag(WrappedComponent, ...flagNames) {
     }
 
     render() {
-      if (!flagNames) {
+      if (flagNames.length === 0) {
         // eslint-disable-next-line no-console
         console.warn('withFlag did not receive a valid flag name')
         return <WrappedComponent flags={{}} {...this.props} />
