@@ -4,6 +4,11 @@
     <strong>A feature flagging library for Node.js, React, and JavaScript</strong>
 </p>
 
+[![CircleCI](https://circleci.com/gh/airshiphq/flagger-js.svg?style=svg)](https://circleci.com/gh/airshiphq/flagger-js)
+[![Coverage Status](https://coveralls.io/repos/github/airshiphq/flagger-js/badge.svg)](https://coveralls.io/github/airshiphq/flagger-js)
+[![David](https://david-dm.org/airshiphq/flagger-js/status.svg)](https://david-dm.org/airshiphq/flagger-js)
+[![David](https://david-dm.org/airshiphq/flagger-js/dev-status.svg)](https://david-dm.org/airshiphq/flagger-js)
+
 Flagger is an open-source feature flagging library. Feature flags allows developers to deliver features quickly and safely with fine-grained control over who sees each feature. Flagger can be configured locally without setting up new services or making network requests.
 
 This library aims to make feature flagging easy to set up by being:
