@@ -35,15 +35,18 @@ export class FlaggerBase {
       throw '<options> must contain envKey corresponding to an environment key or a flagConfig dictionary'
     }
 
+    const subscribeToUpdates =
+      options.subscribeToUpdates === false ? false : true
+
     if (envKey) {
       if (
         this.environment &&
         this.environment.envKey === envKey &&
-        this.environment.subscribeToUpdates === options.subscribeToUpdates &&
+        this.environment.subscribeToUpdates === subscribeToUpdates &&
         this.environment.environmentPromise &&
         this.environment.success !== false
       ) {
-        await this.environmentPromise
+        await this.environment.environmentPromise
       } else {
         if (this.environment) {
           await this.environment.shutdown()
@@ -53,7 +56,7 @@ export class FlaggerBase {
           envKey,
           options.subscribeToUpdates
         )
-        this.environmentPromise = promise
+        this.environment.environmentPromise = promise
         await promise
       }
     } else {
