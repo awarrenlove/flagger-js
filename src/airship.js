@@ -7,6 +7,10 @@ import Router from './router'
 import Stat from './stat'
 import {version} from '../package.json'
 
+const http = require('http')
+const https = require('https')
+const URL = require('url')
+
 const SERVER_URL = 'https://api.airshiphq.com'
 const IDENTIFY_ENDPOINT = `${SERVER_URL}/v2/identify`
 const GATING_INFO_ENDPOINT = `${SERVER_URL}/v2/gating-info`
@@ -88,11 +92,9 @@ export default class Airship extends Environment {
       this.exposures = []
       this.flags = new Set()
 
-      await request
-        .post(IDENTIFY_ENDPOINT + '/' + this.envKey)
-        .type('application/json')
-        .timeout(REQUEST_TIMEOUT)
-        .send({
+      await this.postContent(
+        IDENTIFY_ENDPOINT + '/' + this.envKey,
+        JSON.stringify({
           objects: objects,
           stats: stats.map(s => s.getStatsObj()).filter(so => so !== null),
           exposures: exposures,
@@ -102,13 +104,10 @@ export default class Airship extends Environment {
             version: version
           }
         })
-        .then(res => {
-          if (!res.ok) {
-            logger('Something went wrong. Ingestion failed')
-          }
-        })
+      )
+        .then(result => {})
         .catch(err => {
-          logger(err.message)
+          logger(err)
         })
     }
   }
@@ -162,16 +161,100 @@ export default class Airship extends Environment {
     await this.maybeIngest(true)
   }
 
+  getContent(url, timeout = REQUEST_TIMEOUT) {
+    return new Promise((resolve, reject) => {
+      // select http or https module, depending on reqested url
+      const urlObj = URL.parse(url)
+
+      const lib = urlObj.protocol === 'https:' ? https : http
+
+      const request = lib.get(url, response => {
+        console.log('fooooooooooooooooooo')
+        // handle http errors
+        if (response.statusCode < 200 || response.statusCode > 299) {
+          console.log('fooooooooooooooooooo111111')
+          reject(
+            new Error(
+              'Failed to load page, status code: ' + response.statusCode
+            )
+          )
+        }
+        // temporary data holder
+        const body = []
+        // on every content chunk, push it to the data array
+        response.on('data', chunk => body.push(chunk))
+        // we are done, resolve promise with those joined chunks
+        response.on('end', () => {
+          resolve(body.join(''))
+        })
+      })
+      // handle connection errors of the request
+      request.on('error', err => reject(err))
+      request.setTimeout(timeout, () => {
+        request.abort()
+      })
+    })
+  }
+
+  postContent(url, data, timeout = REQUEST_TIMEOUT) {
+    return new Promise((resolve, reject) => {
+      // select http or https module, depending on reqested url
+      const urlObj = URL.parse(url)
+
+      const lib = urlObj.protocol === 'https:' ? https : http
+
+      const options = {
+        hostname: urlObj.hostname,
+        port: urlObj.protocol === 'https:' ? 443 : 80,
+        path: urlObj.path,
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Content-Length': Buffer.byteLength(data)
+        }
+      }
+      const request = lib.request(options, response => {
+        // handle http errors
+        if (response.statusCode < 200 || response.statusCode > 299) {
+          reject(
+            new Error(
+              'Failed to post to page, status code: ' + response.statusCode
+            )
+          )
+        }
+        // temporary data holder
+        const body = []
+        // on every content chunk, push it to the data array
+        response.on('data', chunk => body.push(chunk))
+        // we are done, resolve promise with those joined chunks
+        response.on('end', () => resolve(body.join('')))
+      })
+      // handle connection errors of the request
+      request.on('error', err => {
+        console.log('HERE??')
+        reject(err)
+      })
+      request.setTimeout(timeout, () => {
+        request.abort()
+      })
+      request.write(data)
+      request.end()
+    })
+  }
+
   async _getGatingInfo() {
-    return request
-      .get(`${GATING_INFO_ENDPOINT}/${this.envKey}?casing=camel`)
-      .timeout(REQUEST_TIMEOUT)
+    const body = await this.getContent(
+      `${GATING_INFO_ENDPOINT}/${this.envKey}?casing=camel`
+    )
+    console.log('RETURNs')
+    return JSON.parse(body)
   }
 
   async _getGatingInfoFromCloudFront() {
-    return request
-      .get(`${CLOUD_FRONT_GATING_INFO_ENDPOINT}/${this.envKey}-camel`)
-      .timeout(REQUEST_TIMEOUT)
+    const body = await this.getContent(
+      `${CLOUD_FRONT_GATING_INFO_ENDPOINT}/${this.envKey}-camel`
+    )
+    return JSON.parse(body)
   }
 
   updateSDK() {
@@ -208,7 +291,8 @@ export default class Airship extends Environment {
       const stat = new Stat('duration__gating_info', Stat.TYPE_DURATION)
       stat.start()
       const result = await this._getGatingInfo()
-      const gatingInfo = result.body
+      console.log(result)
+      const gatingInfo = result
       this.router = new Router(gatingInfo)
       this.updateSDK()
       if (this.gatingInfoListener) {
@@ -230,7 +314,7 @@ export default class Airship extends Environment {
         )
         stat.start()
         const result = await this._getGatingInfoFromCloudFront()
-        const gatingInfo = result.body
+        const gatingInfo = result
         this.router = new Router(gatingInfo)
         this.updateSDK()
         if (this.gatingInfoListener) {
@@ -256,6 +340,7 @@ export default class Airship extends Environment {
   }
 
   async shutdown() {
+    console.log('does it come?')
     if (this.ingestionWorker) {
       clearInterval(this.ingestionWorker)
     }

@@ -879,7 +879,7 @@ test('`bitcoin-pay` is not enabled for object 10 due to age requirement using re
   ).toEqual(false)
 })
 
-test('`bitcoin-pay` gives treatment of `variation-2` and there is one exposure', async () => {
+test('`bitcoin-pay` gives treatment of `variation-2` and there is one exposure', () => {
   environment2.flag('bitcoin-pay').getTreatment({id: 1})
   expect(environment2.exposures).toMatchSnapshot()
 })
