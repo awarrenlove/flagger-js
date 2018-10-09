@@ -635,6 +635,8 @@ test('second configure blocks on first configure', async () => {
 
   await Flagger.configure({envKey: 'onz2150xjon6pkjr'})
   await Flagger.configure({envKey: 'onz2150xjon6pkjr'})
+  // By configuring again and only nocking once, if it tried to
+  // fetch for gating-info a second time, it would fail.
 
   await Flagger.shutdown()
 
