@@ -625,7 +625,7 @@ const nockCloud1 = () => {
           flagType: 'experiment'
         }
       ],
-      env: {hashKey: '7', envKey: '274aain06nm50bsr'},
+      env: {hashKey: '7', envKey: 'onz2150xjon6pkjr'},
       sdkInfo: {SDK_INGESTION_INTERVAL: 60, SDK_INGESTION_MAX_ITEMS: 500}
     })
 }
