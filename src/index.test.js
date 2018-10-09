@@ -2,8 +2,6 @@ import nock from 'nock'
 
 import Flagger from './index'
 
-let environment1
-
 const nockCloud1 = () => {
   nock('https://api.airshiphq.com', {encodedQueryParams: true})
     .get('/v2/gating-info/onz2150xjon6pkjr')
