@@ -927,7 +927,7 @@ test('getContent should timeout', async () => {
   try {
     await environment1.getContent('https://pingpong.com')
   } catch (err) {
-    expect(err).toEqual('request timed out')
+    expect(err).toEqual('Request timed out')
   }
 })
 
