@@ -7,9 +7,9 @@ var ajvErrors = _interopDefault(require('ajv-errors'));
 var md5 = _interopDefault(require('md5'));
 var stringify = _interopDefault(require('fast-json-stable-stringify'));
 var EventSource = _interopDefault(require('eventsource'));
-var request = _interopDefault(require('superagent'));
 
 let logger = x => {
+  // eslint-disable-next-line no-console
   console.error(x);
 };
 function setLogger(fn) {
@@ -610,11 +610,12 @@ class Stat {
     }, {});
     return Object.values(groups).map(stats => {
       const newStat = new Stat(stats[0].name, stats[0].type);
+      let totalDuration, totalCount;
 
       switch (newStat.type) {
         case Stat.TYPE_DURATION:
-          const totalDuration = stats.reduce((duration, stat) => duration + stat.averageDuration * stat.count, 0);
-          const totalCount = stats.reduce((count, stat) => count + stat.count, 0);
+          totalDuration = stats.reduce((duration, stat) => duration + stat.averageDuration * stat.count, 0);
+          totalCount = stats.reduce((count, stat) => count + stat.count, 0);
           newStat.setAverageDuration(totalDuration / totalCount);
           newStat.setCount(totalCount);
           break;
@@ -724,7 +725,8 @@ class Environment {
 
   _saveExposure() {}
 
-  async publish(objs) {}
+  async publish(objs) {} // eslint-disable-line no-unused-vars
+
 
   shutdown() {}
 
@@ -1235,7 +1237,13 @@ class Router {
 
 }
 
-var version = "2.0.1";
+var version = "2.0.2";
+
+const http = require('http');
+
+const https = require('https');
+
+const URL = require('url');
 
 const SERVER_URL = 'https://api.airshiphq.com';
 const IDENTIFY_ENDPOINT = `${SERVER_URL}/v2/identify`;
@@ -1298,7 +1306,7 @@ class Airship extends Environment {
       this.stats = [];
       this.exposures = [];
       this.flags = new Set();
-      await request.post(IDENTIFY_ENDPOINT + '/' + this.envKey).type('application/json').timeout(REQUEST_TIMEOUT).send({
+      await this.postContent(IDENTIFY_ENDPOINT + '/' + this.envKey, JSON.stringify({
         objects: objects,
         stats: stats.map(s => s.getStatsObj()).filter(so => so !== null),
         exposures: exposures,
@@ -1307,12 +1315,8 @@ class Airship extends Environment {
           name: 'nodejs-v1',
           version: version
         }
-      }).then(res => {
-        if (!res.ok) {
-          logger('Something went wrong. Ingestion failed');
-        }
-      }).catch(err => {
-        logger(err.message);
+      })).then(() => {}).catch(err => {
+        logger(err);
       });
     }
   }
@@ -1368,12 +1372,72 @@ class Airship extends Environment {
     await this.maybeIngest(true);
   }
 
+  getContent(url, timeout = REQUEST_TIMEOUT) {
+    return new Promise((resolve, reject) => {
+      const urlObj = URL.parse(url);
+      const lib = urlObj.protocol === 'https:' ? https : http;
+      const request = lib.get(url, response => {
+        if (response.statusCode < 200 || response.statusCode > 299) {
+          reject(new Error('Failed to load page, status code: ' + response.statusCode));
+        }
+
+        const body = [];
+        response.on('data', chunk => body.push(chunk));
+        response.on('end', () => {
+          resolve(body.join(''));
+        });
+      });
+      request.on('error', err => reject(err));
+      request.setTimeout(timeout, () => {
+        request.abort();
+        reject('Request timed out');
+      });
+    });
+  }
+
+  postContent(url, data, contentType = 'application/json', timeout = REQUEST_TIMEOUT) {
+    return new Promise((resolve, reject) => {
+      const urlObj = URL.parse(url);
+      const lib = urlObj.protocol === 'https:' ? https : http;
+      const options = {
+        hostname: urlObj.hostname,
+        port: urlObj.protocol === 'https:' ? 443 : 80,
+        path: urlObj.path,
+        method: 'POST',
+        headers: {
+          'Content-Type': contentType,
+          'Content-Length': Buffer.byteLength(data)
+        }
+      };
+      const request = lib.request(options, response => {
+        if (response.statusCode < 200 || response.statusCode > 299) {
+          reject(new Error('Failed to post to url, status code: ' + response.statusCode));
+        }
+
+        const body = [];
+        response.on('data', chunk => body.push(chunk));
+        response.on('end', () => resolve(body.join('')));
+      });
+      request.on('error', err => {
+        reject(err);
+      });
+      request.setTimeout(timeout, () => {
+        request.abort();
+        reject('Request timed out');
+      });
+      request.write(data);
+      request.end();
+    });
+  }
+
   async _getGatingInfo() {
-    return request.get(`${GATING_INFO_ENDPOINT}/${this.envKey}?casing=camel`).timeout(REQUEST_TIMEOUT);
+    const body = await this.getContent(`${GATING_INFO_ENDPOINT}/${this.envKey}?casing=camel`);
+    return JSON.parse(body);
   }
 
   async _getGatingInfoFromCloudFront() {
-    return request.get(`${CLOUD_FRONT_GATING_INFO_ENDPOINT}/${this.envKey}-camel`).timeout(REQUEST_TIMEOUT);
+    const body = await this.getContent(`${CLOUD_FRONT_GATING_INFO_ENDPOINT}/${this.envKey}-camel`);
+    return JSON.parse(body);
   }
 
   updateSDK() {
@@ -1398,14 +1462,15 @@ class Airship extends Environment {
     }
 
     this.envKey = envKey;
+    this.subscribeToUpdates = subscribeToUpdates;
     this.init();
-    let success = false; // First try our server
+    this.success = null; // First try our server
 
     try {
       const stat = new Stat('duration__gating_info', Stat.TYPE_DURATION);
       stat.start();
       const result = await this._getGatingInfo();
-      const gatingInfo = result.body;
+      const gatingInfo = result;
       this.router = new Router(gatingInfo);
       this.updateSDK();
 
@@ -1413,22 +1478,21 @@ class Airship extends Environment {
         this.gatingInfoListener(gatingInfo);
       }
 
-      success = true;
+      this.success = true;
       stat.stop();
 
       this._saveStat(stat);
     } catch (err) {
       logger(err);
-      success = false;
     } // Next try CloudFront distribution
 
 
-    if (!success) {
+    if (!this.success) {
       try {
         const stat = new Stat('duration__cloudfront_gating_info', Stat.TYPE_DURATION);
         stat.start();
         const result = await this._getGatingInfoFromCloudFront();
-        const gatingInfo = result.body;
+        const gatingInfo = result;
         this.router = new Router(gatingInfo);
         this.updateSDK();
 
@@ -1436,17 +1500,17 @@ class Airship extends Environment {
           this.gatingInfoListener(gatingInfo);
         }
 
-        success = true;
+        this.success = true;
         stat.stop();
 
         this._saveStat(stat);
       } catch (err) {
         logger(err);
-        success = false;
+        this.success = false;
       }
     }
 
-    if (!success) {
+    if (!this.success) {
       throw 'Failed to retrieve initial gating information';
     }
 
@@ -1524,7 +1588,7 @@ class Airship extends Environment {
 
       this.lastSSEConnectTimestamp = Date.now();
     });
-    this.eventSource.addEventListener('keepalive', evt => {
+    this.eventSource.addEventListener('keepalive', () => {
       this.lastSSEConnectTimestamp = Date.now();
     });
   }
@@ -1691,6 +1755,7 @@ const transformFlagConfig = flagConfig => {
       hashKey: key,
       isPaused: !active,
       isWebAccessible: false,
+      // eslint-disable-line no-undef
       codename: key,
       flagStatus: 'operational'
     };
@@ -1848,13 +1913,21 @@ class FlaggerBase {
       throw '<options> must contain envKey corresponding to an environment key or a flagConfig dictionary';
     }
 
-    if (envKey) {
-      if (this.environment) {
-        await this.environment.shutdown();
-      }
+    const subscribeToUpdates = options.subscribeToUpdates === false ? false : true;
 
-      this.environment = new Airship(this.handleGatingInfoUpdate.bind(this));
-      await this.environment.configure(envKey, options.subscribeToUpdates);
+    if (envKey) {
+      if (this.environment && this.environment.envKey === envKey && this.environment.subscribeToUpdates === subscribeToUpdates && this.environment.environmentPromise && this.environment.success !== false) {
+        await this.environment.environmentPromise;
+      } else {
+        if (this.environment) {
+          await this.environment.shutdown();
+        }
+
+        this.environment = new Airship(this.handleGatingInfoUpdate.bind(this));
+        const promise = this.environment.configure(envKey, options.subscribeToUpdates);
+        this.environment.environmentPromise = promise;
+        await promise;
+      }
     } else {
       if (this.environment) {
         await this.environment.shutdown();
@@ -1915,6 +1988,7 @@ class AirshipLegacy {
   }
 
   async init() {
+    // eslint-disable-next-line no-console
     console.warn('This method is deprecated. Please refer to v2 documentation.');
     await this.airship.configure({
       envKey: this.envKey
@@ -1922,21 +1996,24 @@ class AirshipLegacy {
   }
 
   isEnabled(controlShortName, object) {
+    // eslint-disable-next-line no-console
     console.warn('This method is deprecated. Please refer to v2 documentation.');
     return this.airship.flag(controlShortName).isEnabled(object);
   }
 
   getVariation(controlShortName, object) {
+    // eslint-disable-next-line no-console
     console.warn('This method is deprecated. Please refer to v2 documentation.');
     return this.airship.flag(controlShortName).getTreatment(object);
   }
 
   isEligible(controlShortName, object) {
+    // eslint-disable-next-line no-console
     console.warn('This method is deprecated. Please refer to v2 documentation.');
     return this.airship.flag(controlShortName).isEligible(object);
   }
 
-}
+} // eslint-disable-next-line no-undef
 
 module.exports = AirshipLegacy;
 //# sourceMappingURL=compat.js.map
