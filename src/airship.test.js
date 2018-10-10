@@ -918,3 +918,15 @@ test('getContent should work', async () => {
   const result = await environment1.getContent('https://pingpong.com')
   expect(result).toEqual('pong')
 })
+
+test('getContent should timeout', async () => {
+  nock('https://pingpong.com', {encodedQueryParams: true})
+    .get('/')
+    .delay(1000 * 11)
+    .reply(200, 'pong')
+  try {
+    await environment1.getContent('https://pingpong.com')
+  } catch (err) {
+    expect(err).toEqual('request timed out')
+  }
+})
