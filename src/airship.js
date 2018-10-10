@@ -103,11 +103,9 @@ export default class Airship extends Environment {
             version: version
           }
         })
-      )
-        .then(() => {})
-        .catch(err => {
-          logger(err)
-        })
+      ).catch(err => {
+        logger(err)
+      })
     }
   }
 
