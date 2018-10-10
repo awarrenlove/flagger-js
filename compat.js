@@ -1397,6 +1397,7 @@ class Airship extends Environment {
       const urlObj = URL.parse(url);
       const lib = urlObj.protocol === 'https:' ? https : http;
       const options = {
+        protocol: urlObj.protocol,
         hostname: urlObj.hostname,
         port: urlObj.protocol === 'https:' ? 443 : 80,
         path: urlObj.path,
