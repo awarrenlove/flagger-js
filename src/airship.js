@@ -188,6 +188,7 @@ export default class Airship extends Environment {
 
       request.setTimeout(timeout, () => {
         request.abort()
+        reject('request timed out')
       })
     })
   }
@@ -235,6 +236,7 @@ export default class Airship extends Environment {
 
       request.setTimeout(timeout, () => {
         request.abort()
+        reject('request timed out')
       })
 
       request.write(data)
