@@ -62,8 +62,7 @@
     "ajv-errors": "^1.0.0",
     "eventsource": "^1.0.7",
     "md5": "^2.2.1",
-    "prop-types": "^15.6.2",
-    "superagent": "^3.8.3"
+    "prop-types": "^15.6.2"
   },
   "husky": {
     "hooks": {

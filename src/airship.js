@@ -1,5 +1,4 @@
 import EventSource from 'eventsource'
-import request from 'superagent'
 import Environment from './environment'
 import {logger} from './logger'
 import LRU from './lru'
