@@ -6,9 +6,9 @@ import Router from './router'
 import Stat from './stat'
 import {version} from '../package.json'
 
-const http = require('http')
-const https = require('https')
-const URL = require('url')
+import * as http from 'http'
+import * as https from 'https'
+import * as URL from 'url'
 
 const SERVER_URL = 'https://api.airshiphq.com'
 const IDENTIFY_ENDPOINT = `${SERVER_URL}/v2/identify`
