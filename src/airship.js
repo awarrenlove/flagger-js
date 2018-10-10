@@ -204,8 +204,9 @@ export default class Airship extends Environment {
       const lib = urlObj.protocol === 'https:' ? https : http
 
       const options = {
+        protocol: urlObj.protocol,
         hostname: urlObj.hostname,
-        port: urlObj.protocol === 'https:' ? 443 : 80,
+        port: urlObj.port,
         path: urlObj.path,
         method: 'POST',
         headers: {
