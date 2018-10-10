@@ -7,6 +7,9 @@ var ajvErrors = _interopDefault(require('ajv-errors'));
 var md5 = _interopDefault(require('md5'));
 var stringify = _interopDefault(require('fast-json-stable-stringify'));
 var EventSource = _interopDefault(require('eventsource'));
+var http = require('http');
+var https = require('https');
+var URL = require('url');
 
 let logger = x => {
   // eslint-disable-next-line no-console
@@ -1238,12 +1241,6 @@ class Router {
 }
 
 var version = "2.0.2";
-
-const http = require('http');
-
-const https = require('https');
-
-const URL = require('url');
 
 const SERVER_URL = 'https://api.airshiphq.com';
 const IDENTIFY_ENDPOINT = `${SERVER_URL}/v2/identify`;
