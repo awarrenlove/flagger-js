@@ -1312,7 +1312,7 @@ class Airship extends Environment {
           name: 'nodejs-v1',
           version: version
         }
-      })).then(() => {}).catch(err => {
+      })).catch(err => {
         logger(err);
       });
     }
@@ -1375,7 +1375,7 @@ class Airship extends Environment {
       const lib = urlObj.protocol === 'https:' ? https : http;
       const request = lib.get(url, response => {
         if (response.statusCode < 200 || response.statusCode > 299) {
-          reject(new Error('Failed to load page, status code: ' + response.statusCode));
+          reject('Failed to load page, status code: ' + response.statusCode);
         }
 
         const body = [];
@@ -1399,7 +1399,7 @@ class Airship extends Environment {
       const options = {
         protocol: urlObj.protocol,
         hostname: urlObj.hostname,
-        port: urlObj.protocol === 'https:' ? 443 : 80,
+        port: urlObj.port,
         path: urlObj.path,
         method: 'POST',
         headers: {
@@ -1409,7 +1409,7 @@ class Airship extends Environment {
       };
       const request = lib.request(options, response => {
         if (response.statusCode < 200 || response.statusCode > 299) {
-          reject(new Error('Failed to post to url, status code: ' + response.statusCode));
+          reject('Failed to post to url, status code: ' + response.statusCode);
         }
 
         const body = [];
