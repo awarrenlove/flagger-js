@@ -166,11 +166,7 @@ export default class Airship extends Environment {
 
       const request = lib.get(url, response => {
         if (response.statusCode < 200 || response.statusCode > 299) {
-          reject(
-            new Error(
-              'Failed to load page, status code: ' + response.statusCode
-            )
-          )
+          reject('Failed to load page, status code: ' + response.statusCode)
         }
         const body = []
 
@@ -214,11 +210,7 @@ export default class Airship extends Environment {
       }
       const request = lib.request(options, response => {
         if (response.statusCode < 200 || response.statusCode > 299) {
-          reject(
-            new Error(
-              'Failed to post to url, status code: ' + response.statusCode
-            )
-          )
+          reject('Failed to post to url, status code: ' + response.statusCode)
         }
 
         const body = []
