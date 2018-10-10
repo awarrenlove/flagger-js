@@ -910,3 +910,11 @@ test('same gate calls should produce stats that can be combined', () => {
   expect(statObj).not.toBe(null)
   expect(statObj.count).toEqual(2)
 })
+
+test('getContent should work', async () => {
+  nock('https://pingpong.com', {encodedQueryParams: true})
+    .get('/')
+    .reply(200, 'pong')
+  const result = await environment1.getContent('https://pingpong.com')
+  expect(result).toEqual('pong')
+})
