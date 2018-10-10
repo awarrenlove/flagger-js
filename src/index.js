@@ -58,7 +58,6 @@ export class FlaggerBase {
         )
         this.environment.environmentPromise = promise
         await promise
-        console.log('finishes"')
       }
     } else {
       if (this.environment) {

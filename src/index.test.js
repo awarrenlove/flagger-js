@@ -632,14 +632,12 @@ test('second configure blocks on first configure', async () => {
   nock.disableNetConnect()
 
   await Flagger.configure({envKey: 'onz2150xjon6pkjr'})
-  console.log('does it reach?')
+  await Flagger.configure({envKey: 'onz2150xjon6pkjr'})
   // By configuring again and only nocking once, if it tried to
   // fetch for gating-info a second time, it would fail.
 
   await Flagger.shutdown()
-  console.log('does it reach2 ?')
 
   nock.cleanAll()
   nock.enableNetConnect()
-  console.log('does it reach3?')
 })

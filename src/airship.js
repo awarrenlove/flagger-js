@@ -163,33 +163,29 @@ export default class Airship extends Environment {
 
   getContent(url, timeout = REQUEST_TIMEOUT) {
     return new Promise((resolve, reject) => {
-      // select http or https module, depending on reqested url
       const urlObj = URL.parse(url)
 
       const lib = urlObj.protocol === 'https:' ? https : http
 
       const request = lib.get(url, response => {
-        console.log('fooooooooooooooooooo')
-        // handle http errors
         if (response.statusCode < 200 || response.statusCode > 299) {
-          console.log('fooooooooooooooooooo111111')
           reject(
             new Error(
               'Failed to load page, status code: ' + response.statusCode
             )
           )
         }
-        // temporary data holder
         const body = []
-        // on every content chunk, push it to the data array
+
         response.on('data', chunk => body.push(chunk))
-        // we are done, resolve promise with those joined chunks
+
         response.on('end', () => {
           resolve(body.join(''))
         })
       })
-      // handle connection errors of the request
+
       request.on('error', err => reject(err))
+
       request.setTimeout(timeout, () => {
         request.abort()
       })
@@ -198,7 +194,6 @@ export default class Airship extends Environment {
 
   postContent(url, data, timeout = REQUEST_TIMEOUT) {
     return new Promise((resolve, reject) => {
-      // select http or https module, depending on reqested url
       const urlObj = URL.parse(url)
 
       const lib = urlObj.protocol === 'https:' ? https : http
@@ -214,29 +209,29 @@ export default class Airship extends Environment {
         }
       }
       const request = lib.request(options, response => {
-        // handle http errors
         if (response.statusCode < 200 || response.statusCode > 299) {
           reject(
             new Error(
-              'Failed to post to page, status code: ' + response.statusCode
+              'Failed to post to url, status code: ' + response.statusCode
             )
           )
         }
-        // temporary data holder
+
         const body = []
-        // on every content chunk, push it to the data array
+
         response.on('data', chunk => body.push(chunk))
-        // we are done, resolve promise with those joined chunks
+
         response.on('end', () => resolve(body.join('')))
       })
-      // handle connection errors of the request
+
       request.on('error', err => {
-        console.log('HERE??')
         reject(err)
       })
+
       request.setTimeout(timeout, () => {
         request.abort()
       })
+
       request.write(data)
       request.end()
     })
@@ -246,7 +241,6 @@ export default class Airship extends Environment {
     const body = await this.getContent(
       `${GATING_INFO_ENDPOINT}/${this.envKey}?casing=camel`
     )
-    console.log('RETURNs')
     return JSON.parse(body)
   }
 
@@ -291,7 +285,6 @@ export default class Airship extends Environment {
       const stat = new Stat('duration__gating_info', Stat.TYPE_DURATION)
       stat.start()
       const result = await this._getGatingInfo()
-      console.log(result)
       const gatingInfo = result
       this.router = new Router(gatingInfo)
       this.updateSDK()
@@ -340,7 +333,6 @@ export default class Airship extends Environment {
   }
 
   async shutdown() {
-    console.log('does it come?')
     if (this.ingestionWorker) {
       clearInterval(this.ingestionWorker)
     }
