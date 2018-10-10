@@ -192,7 +192,12 @@ export default class Airship extends Environment {
     })
   }
 
-  postContent(url, data, timeout = REQUEST_TIMEOUT) {
+  postContent(
+    url,
+    data,
+    contentType = 'application/json',
+    timeout = REQUEST_TIMEOUT
+  ) {
     return new Promise((resolve, reject) => {
       const urlObj = URL.parse(url)
 
@@ -204,7 +209,7 @@ export default class Airship extends Environment {
         path: urlObj.path,
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
+          'Content-Type': contentType,
           'Content-Length': Buffer.byteLength(data)
         }
       }
