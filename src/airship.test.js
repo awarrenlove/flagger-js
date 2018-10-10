@@ -912,7 +912,7 @@ test('same gate calls should produce stats that can be combined', () => {
 })
 
 test('getContent should work', async () => {
-  nock('https://pingpong.com', {encodedQueryParams: true})
+  nock('https://pingpong.com')
     .get('/')
     .reply(200, 'pong')
   const result = await environment1.getContent('https://pingpong.com')
@@ -920,7 +920,7 @@ test('getContent should work', async () => {
 })
 
 test('getContent should timeout', async () => {
-  nock('https://pingpong.com', {encodedQueryParams: true})
+  nock('https://pingpong.com')
     .get('/')
     .delay(1000 * 11)
     .reply(200, 'pong')
@@ -929,4 +929,15 @@ test('getContent should timeout', async () => {
   } catch (err) {
     expect(err).toEqual('request timed out')
   }
+})
+
+test('postContent should work', async () => {
+  nock('https://pingpong.com')
+    .post('/', {message: 'ping'})
+    .reply(200, 'pong')
+  const result = await environment1.postContent(
+    'https://pingpong.com',
+    JSON.stringify({message: 'ping'})
+  )
+  expect(result).toEqual('pong')
 })
