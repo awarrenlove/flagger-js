@@ -910,3 +910,8 @@ test('same gate calls should produce stats that can be combined', () => {
   expect(statObj).not.toBe(null)
   expect(statObj.count).toEqual(2)
 })
+
+test('.flag() should work before initialization', () => {
+  const environment = new Airship()
+  expect(environment.flag('some-flag').isEnabled()).toBeFalsy()
+})

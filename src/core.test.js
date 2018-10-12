@@ -90,3 +90,8 @@ test('off flag', () => {
 test('locally configured Airship correctly knows that it is locally configured', () => {
   expect(environment.router.isLocallyConfigured()).toEqual(true)
 })
+
+test('.flag() should work before initialization', () => {
+  const environment = new Core()
+  expect(environment.flag('some-flag').isEnabled()).toBeFalsy()
+})

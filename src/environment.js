@@ -2,6 +2,7 @@ import {logger} from './logger'
 import AirshipObject from './object'
 import Population from './population'
 import Stat from './stat'
+import Flag from './flag'
 
 export default class Environment {
   identify(obj) {
@@ -26,7 +27,9 @@ export default class Environment {
   shutdown() {}
 
   flag(flagName) {
-    const flag = this.router.getFlag(flagName)
+    const flag = this.router
+      ? this.router.getFlag(flagName)
+      : new Flag(flagName)
     flag.setDelegate(this)
     return flag
   }
