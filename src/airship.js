@@ -24,6 +24,7 @@ export default class Airship extends Environment {
     super()
 
     this.gatingInfoListener = gatingInfoListener
+    this.init()
   }
 
   init() {
