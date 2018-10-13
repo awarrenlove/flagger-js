@@ -6,9 +6,9 @@
 
 <p align="center">
     <a href="https://circleci.com/gh/airshiphq/flagger-js"><img src="https://circleci.com/gh/airshiphq/flagger-js.svg?style=svg" alt="CircleCI Build Status" /></a>
-    <a href="https://coveralls.io/github/airshiphq/flagger-js"><img src="https://coveralls.io/repos/github/airshiphq/flagger-js/badge.svg" alt="Coverage Status" /></a>
-       <a href="https://david-dm.org/airshiphq/flagger-js"><img src="https://david-dm.org/airshiphq/flagger-js/status.svg" alt="David" /></a>
-       <a href="https://david-dm.org/airshiphq/flagger-js"><img src="https://david-dm.org/airshiphq/flagger-js/dev-status.svg" alt="David" /></a>
+    <a href="https://codecov.io/gh/airshiphq/flagger-js"><img src="https://codecov.io/gh/airshiphq/flagger-js/branch/master/graph/badge.svg" alt="Coverage Status" /></a>
+    <a href="https://david-dm.org/airshiphq/flagger-js"><img src="https://david-dm.org/airshiphq/flagger-js/status.svg" alt="David" /></a>
+    <a href="https://david-dm.org/airshiphq/flagger-js"><img src="https://david-dm.org/airshiphq/flagger-js/dev-status.svg" alt="David" /></a>
 </p>
 
 Flagger is an open-source feature flagging library. Feature flags allows developers to deliver features quickly and safely with fine-grained control over who sees each feature. Flagger can be configured locally without setting up new services or making network requests.
