@@ -40,7 +40,7 @@ export default class Airship extends Environment {
     this.objectLRUCache = new LRU(500)
     this.firstIngestion = true
 
-    this.shouldIngestEntities = true
+    this.shouldIngestObjects = true
     this.shouldIngestStats = true
     this.shouldIngestFlags = true
     this.shouldIngestExposures = true
