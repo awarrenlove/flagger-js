@@ -127,7 +127,8 @@ export default class Environment {
       id: obj.id,
       treatmentId: alloc.treatment.treatmentId,
       treatment: alloc.treatment.codename,
-      methodCalled: methodCalled
+      methodCalled: methodCalled,
+      eligible: alloc.eligible
     }
   }
 
