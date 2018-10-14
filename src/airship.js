@@ -42,8 +42,8 @@ export default class Airship extends Environment {
 
     this.shouldIngestObjects = true
     this.shouldIngestStats = true
-    this.shouldIngestFlags = true
     this.shouldIngestExposures = true
+    this.shouldIngestFlags = true
 
     this.restartIngestionWorker()
   }
@@ -59,6 +59,22 @@ export default class Airship extends Environment {
   }
 
   async maybeIngest(force = false) {
+    if (!this.shouldIngestObjects) {
+      this.objects = []
+    }
+
+    if (!this.shouldIngestStats) {
+      this.stats = []
+    }
+
+    if (!this.shouldIngestExposures) {
+      this.exposures = []
+    }
+
+    if (!this.shouldIngestFlags) {
+      this.flags = new Set()
+    }
+
     let shouldIngest =
       force ||
       (this.objects.length >= this.ingestionMaxItems ||
