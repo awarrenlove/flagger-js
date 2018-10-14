@@ -202,7 +202,7 @@ export default class Airship extends Environment {
     const shouldIngestObjects = this.router.getShouldIngestObjects()
     const shouldIngestStats = this.router.getShouldIngestStats()
     const shouldIngestExposures = this.router.getShouldIngestExposures()
-    const shouldIngestFlags = this.router.shouldIngestFlags()
+    const shouldIngestFlags = this.router.getShouldIngestFlags()
 
     if (typeof ingestionMaxItems === 'number' && ingestionMaxItems > 0) {
       this.ingestionMaxItems = ingestionMaxItems
