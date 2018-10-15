@@ -120,9 +120,11 @@ export default class Environment {
     return alloc1
   }
 
-  _getExposure(airshipObj, alloc, methodCalled) {
+  _getExposure(flag, airshipObj, alloc, methodCalled) {
     const obj = airshipObj.getRawObject()
     return {
+      flagId: flag.id,
+      flag: flag.codename,
       type: obj.type,
       id: obj.id,
       treatmentId: alloc.treatment.treatmentId,
@@ -150,7 +152,12 @@ export default class Environment {
       groupAllocation
     )
 
-    const expo = this._getExposure(airshipObj, finalAllocation, 'getTreatment')
+    const expo = this._getExposure(
+      flag,
+      airshipObj,
+      finalAllocation,
+      'getTreatment'
+    )
     this._saveExposure(expo)
 
     stat.stop()
@@ -175,7 +182,12 @@ export default class Environment {
       groupAllocation
     )
 
-    const expo = this._getExposure(airshipObj, finalAllocation, 'getPayload')
+    const expo = this._getExposure(
+      flag,
+      airshipObj,
+      finalAllocation,
+      'getPayload'
+    )
     this._saveExposure(expo)
 
     stat.stop()
@@ -201,7 +213,12 @@ export default class Environment {
       groupAllocation
     )
 
-    const expo = this._getExposure(airshipObj, finalAllocation, 'isEligible')
+    const expo = this._getExposure(
+      flag,
+      airshipObj,
+      finalAllocation,
+      'isEligible'
+    )
     this._saveExposure(expo)
 
     stat.stop()
@@ -227,7 +244,12 @@ export default class Environment {
       groupAllocation
     )
 
-    const expo = this._getExposure(airshipObj, finalAllocation, 'isEnabled')
+    const expo = this._getExposure(
+      flag,
+      airshipObj,
+      finalAllocation,
+      'isEnabled'
+    )
     this._saveExposure(expo)
 
     stat.stop()
