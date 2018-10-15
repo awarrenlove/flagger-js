@@ -1,15 +1,11 @@
-'use strict';
-
-function _interopDefault (ex) { return (ex && (typeof ex === 'object') && 'default' in ex) ? ex['default'] : ex; }
-
-var Ajv = _interopDefault(require('ajv'));
-var ajvErrors = _interopDefault(require('ajv-errors'));
-var md5 = _interopDefault(require('md5'));
-var stringify = _interopDefault(require('fast-json-stable-stringify'));
-var EventSource = _interopDefault(require('eventsource'));
-var http = require('http');
-var https = require('https');
-var URL = require('url');
+import Ajv from 'ajv';
+import ajvErrors from 'ajv-errors';
+import md5 from 'md5';
+import stringify from 'fast-json-stable-stringify';
+import EventSource from 'eventsource';
+import * as http from 'http';
+import * as https from 'https';
+import { parse } from 'url';
 
 let logger = x => {
   // eslint-disable-next-line no-console
@@ -1309,7 +1305,7 @@ class Airship extends Environment {
         exposures: exposures,
         flags: flags,
         sdkInfo: {
-          name: 'nodejs-v1',
+          name: 'nodejs',
           version: version
         }
       })).catch(err => {
@@ -1371,7 +1367,7 @@ class Airship extends Environment {
 
   getContent(url, timeout = REQUEST_TIMEOUT) {
     return new Promise((resolve, reject) => {
-      const urlObj = URL.parse(url);
+      const urlObj = parse(url);
       const lib = urlObj.protocol === 'https:' ? https : http;
       const request = lib.get(url, response => {
         if (response.statusCode < 200 || response.statusCode > 299) {
@@ -1394,7 +1390,7 @@ class Airship extends Environment {
 
   postContent(url, data, contentType = 'application/json', timeout = REQUEST_TIMEOUT) {
     return new Promise((resolve, reject) => {
-      const urlObj = URL.parse(url);
+      const urlObj = parse(url);
       const lib = urlObj.protocol === 'https:' ? https : http;
       const options = {
         protocol: urlObj.protocol,
@@ -1978,40 +1974,8 @@ class FlaggerBase {
   }
 
 }
+const Flagger = new FlaggerBase();
 
-class AirshipLegacy {
-  constructor(options) {
-    this.envKey = options.envKey;
-    this.airship = new FlaggerBase();
-  }
-
-  async init() {
-    // eslint-disable-next-line no-console
-    console.warn('This method is deprecated. Please refer to v2 documentation.');
-    await this.airship.configure({
-      envKey: this.envKey
-    });
-  }
-
-  isEnabled(controlShortName, object) {
-    // eslint-disable-next-line no-console
-    console.warn('This method is deprecated. Please refer to v2 documentation.');
-    return this.airship.flag(controlShortName).isEnabled(object);
-  }
-
-  getVariation(controlShortName, object) {
-    // eslint-disable-next-line no-console
-    console.warn('This method is deprecated. Please refer to v2 documentation.');
-    return this.airship.flag(controlShortName).getTreatment(object);
-  }
-
-  isEligible(controlShortName, object) {
-    // eslint-disable-next-line no-console
-    console.warn('This method is deprecated. Please refer to v2 documentation.');
-    return this.airship.flag(controlShortName).isEligible(object);
-  }
-
-} // eslint-disable-next-line no-undef
-
-module.exports = AirshipLegacy;
-//# sourceMappingURL=compat.js.map
+export default Flagger;
+export { FlaggerBase };
+//# sourceMappingURL=esm.js.map

@@ -879,7 +879,7 @@ test('`bitcoin-pay` is not enabled for object 10 due to age requirement using re
   ).toEqual(false)
 })
 
-test('`bitcoin-pay` gives treatment of `variation-2` and there is one exposure', async () => {
+test('`bitcoin-pay` gives treatment of `variation-2` and there is one exposure', () => {
   environment2.flag('bitcoin-pay').getTreatment({id: 1})
   expect(environment2.exposures).toMatchSnapshot()
 })
@@ -909,6 +909,37 @@ test('same gate calls should produce stats that can be combined', () => {
   const statObj = environment2.stats[0].getStatsObj()
   expect(statObj).not.toBe(null)
   expect(statObj.count).toEqual(2)
+})
+
+test('getContent should work', async () => {
+  nock('https://pingpong.com')
+    .get('/')
+    .reply(200, 'pong')
+  const result = await environment1.getContent('https://pingpong.com')
+  expect(result).toEqual('pong')
+})
+
+test('getContent should timeout', async () => {
+  nock('https://pingpong.com')
+    .get('/')
+    .delay(1000 * 11)
+    .reply(200, 'pong')
+  try {
+    await environment1.getContent('https://pingpong.com')
+  } catch (err) {
+    expect(err).toEqual('Request timed out')
+  }
+})
+
+test('postContent should work', async () => {
+  nock('https://pingpong.com')
+    .post('/', {message: 'ping'})
+    .reply(200, 'pong')
+  const result = await environment1.postContent(
+    'https://pingpong.com',
+    JSON.stringify({message: 'ping'})
+  )
+  expect(result).toEqual('pong')
 })
 
 test('.flag() should work before initialization', () => {

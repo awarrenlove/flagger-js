@@ -1,5 +1,7 @@
 'use strict';
 
+Object.defineProperty(exports, '__esModule', { value: true });
+
 function _interopDefault (ex) { return (ex && (typeof ex === 'object') && 'default' in ex) ? ex['default'] : ex; }
 
 var Ajv = _interopDefault(require('ajv'));
@@ -10,14 +12,8 @@ var EventSource = _interopDefault(require('eventsource'));
 var http = require('http');
 var https = require('https');
 var URL = require('url');
-
-let logger = x => {
-  // eslint-disable-next-line no-console
-  console.error(x);
-};
-function setLogger(fn) {
-  logger = fn;
-}
+var PropTypes = _interopDefault(require('prop-types'));
+var React = _interopDefault(require('react'));
 
 function _defineProperty(obj, key, value) {
   if (key in obj) {
@@ -32,6 +28,24 @@ function _defineProperty(obj, key, value) {
   }
 
   return obj;
+}
+
+function _extends() {
+  _extends = Object.assign || function (target) {
+    for (var i = 1; i < arguments.length; i++) {
+      var source = arguments[i];
+
+      for (var key in source) {
+        if (Object.prototype.hasOwnProperty.call(source, key)) {
+          target[key] = source[key];
+        }
+      }
+    }
+
+    return target;
+  };
+
+  return _extends.apply(this, arguments);
 }
 
 function _objectSpread(target) {
@@ -51,6 +65,14 @@ function _objectSpread(target) {
   }
 
   return target;
+}
+
+let logger = x => {
+  // eslint-disable-next-line no-console
+  console.error(x);
+};
+function setLogger(fn) {
+  logger = fn;
 }
 
 const SCHEMA = {
@@ -1309,7 +1331,7 @@ class Airship extends Environment {
         exposures: exposures,
         flags: flags,
         sdkInfo: {
-          name: 'nodejs-v1',
+          name: 'react-ssr',
           version: version
         }
       })).catch(err => {
@@ -1978,40 +2000,186 @@ class FlaggerBase {
   }
 
 }
+const Flagger = new FlaggerBase();
 
-class AirshipLegacy {
-  constructor(options) {
-    this.envKey = options.envKey;
-    this.airship = new FlaggerBase();
+class FlagProvider extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = {
+      loading: !Flagger.environment
+    };
+
+    if (Flagger.environment) {
+      this.configure();
+    }
   }
 
-  async init() {
-    // eslint-disable-next-line no-console
-    console.warn('This method is deprecated. Please refer to v2 documentation.');
-    await this.airship.configure({
-      envKey: this.envKey
+  async configure() {
+    if (!Flagger.environment) {
+      await Flagger.configure({
+        envKey: this.props.envKey,
+        flagConfig: this.props.flagConfig,
+        subscribeToUpdates: this.props.subscribeToUpdates
+      });
+    }
+
+    if (this.props.entity) {
+      Flagger.identify(this.props.entity);
+    }
+  }
+
+  async componentDidMount() {
+    if (Flagger.environment) {
+      return;
+    }
+
+    await this.configure();
+    this.setState({
+      loading: false
     });
   }
 
-  isEnabled(controlShortName, object) {
-    // eslint-disable-next-line no-console
-    console.warn('This method is deprecated. Please refer to v2 documentation.');
-    return this.airship.flag(controlShortName).isEnabled(object);
+  render() {
+    return this.state.loading ? this.props.loadingView : this.props.children;
   }
 
-  getVariation(controlShortName, object) {
-    // eslint-disable-next-line no-console
-    console.warn('This method is deprecated. Please refer to v2 documentation.');
-    return this.airship.flag(controlShortName).getTreatment(object);
+}
+FlagProvider.propTypes = {
+  envKey: PropTypes.string,
+  entity: PropTypes.object,
+  flagConfig: PropTypes.object,
+  loadingView: PropTypes.node,
+  subscribeToUpdates: PropTypes.bool,
+  children: PropTypes.node
+};
+FlagProvider.defaultProps = {
+  children: null,
+  loadingView: null,
+  subscribeToUpdates: false
+};
+function withFlag(WrappedComponent, ...flagNames) {
+  return class FlaggedComponent extends React.Component {
+    constructor(...args) {
+      super(...args);
+
+      _defineProperty(this, "handleChange", () => {
+        this.forceUpdate();
+      });
+    }
+
+    componentDidMount() {
+      Flagger.addGatingInfoListener(this.handleChange);
+    }
+
+    componentWillUnmount() {
+      Flagger.removeGatingInfoListener(this.handleChange);
+    }
+
+    render() {
+      if (flagNames.length === 0) {
+        // eslint-disable-next-line no-console
+        console.warn('withFlag did not receive a valid flag name');
+        return React.createElement(WrappedComponent, _extends({
+          flags: {}
+        }, this.props));
+      }
+
+      const flags = flagNames.reduce((flags, flagName) => {
+        const flag = Flagger.flag(flagName);
+        const enabled = flag.isEnabled(this.props.entity);
+        const eligible = flag.isEligible(this.props.entity);
+        const treatment = flag.getTreatment(this.props.entity);
+        const payload = flag.getPayload(this.props.entity);
+        return _objectSpread({}, flags, {
+          [flagName]: {
+            enabled,
+            eligible,
+            treatment,
+            payload
+          }
+        });
+      }, {});
+      return React.createElement(WrappedComponent, _extends({
+        flags: flags
+      }, this.props));
+    }
+
+  };
+}
+class FlagSwitch extends React.Component {
+  render() {
+    return React.Children.map(this.props.children, child => {
+      if (child.type.prototype instanceof Flag$1 || child.type === Flag$1) {
+        const props = {};
+
+        if (!child.props.flag) {
+          props.flag = this.props.flag;
+        }
+
+        if (!child.props.entity && this.props.entity) {
+          props.entity = this.props.entity;
+        }
+
+        return React.cloneElement(child, props, child.props.children);
+      } else {
+        return child;
+      }
+    });
   }
 
-  isEligible(controlShortName, object) {
-    // eslint-disable-next-line no-console
-    console.warn('This method is deprecated. Please refer to v2 documentation.');
-    return this.airship.flag(controlShortName).isEligible(object);
+}
+FlagSwitch.propTypes = {
+  flag: PropTypes.string.isRequired,
+  children: PropTypes.node,
+  entity: PropTypes.object
+};
+class Flag$1 extends React.Component {
+  constructor(...args) {
+    super(...args);
+
+    _defineProperty(this, "handleChange", () => {
+      this.forceUpdate();
+    });
   }
 
-} // eslint-disable-next-line no-undef
+  componentDidMount() {
+    Flagger.addGatingInfoListener(this.handleChange);
+  }
 
-module.exports = AirshipLegacy;
-//# sourceMappingURL=compat.js.map
+  componentWillUnmount() {
+    Flagger.removeGatingInfoListener(this.handleChange);
+  }
+
+  render() {
+    if (!this.props.flag) {
+      // eslint-disable-next-line no-console
+      console.warn('<Flag> component missing flag name');
+      return null;
+    }
+
+    const treatment = Flagger.flag(this.props.flag).getTreatment(this.props.entity);
+
+    if (treatment !== this.props.case) {
+      return null;
+    }
+
+    return this.props.children;
+  }
+
+}
+Flag$1.propTypes = {
+  flag: PropTypes.string,
+  case: PropTypes.string.isRequired,
+  children: PropTypes.node,
+  entity: PropTypes.object
+};
+Flag$1.defaultProps = {
+  children: null
+};
+
+exports.Airship = Flagger;
+exports.FlagProvider = FlagProvider;
+exports.withFlag = withFlag;
+exports.FlagSwitch = FlagSwitch;
+exports.Flag = Flag$1;
+//# sourceMappingURL=react.js.map
