@@ -120,13 +120,15 @@ export default class Environment {
     return alloc1
   }
 
-  _getExposure(airshipObj, alloc) {
+  _getExposure(airshipObj, alloc, methodCalled) {
     const obj = airshipObj.getRawObject()
     return {
       type: obj.type,
       id: obj.id,
       treatmentId: alloc.treatment.treatmentId,
-      treatment: alloc.treatment.codename
+      treatment: alloc.treatment.codename,
+      methodCalled: methodCalled,
+      eligible: alloc.eligible
     }
   }
 
@@ -148,7 +150,7 @@ export default class Environment {
       groupAllocation
     )
 
-    const expo = this._getExposure(airshipObj, finalAllocation)
+    const expo = this._getExposure(airshipObj, finalAllocation, 'getTreatment')
     this._saveExposure(expo)
 
     stat.stop()
@@ -173,6 +175,9 @@ export default class Environment {
       groupAllocation
     )
 
+    const expo = this._getExposure(airshipObj, finalAllocation, 'getPayload')
+    this._saveExposure(expo)
+
     stat.stop()
     this._saveStat(stat)
     return finalAllocation.treatment.payload
@@ -196,6 +201,9 @@ export default class Environment {
       groupAllocation
     )
 
+    const expo = this._getExposure(airshipObj, finalAllocation, 'isEligible')
+    this._saveExposure(expo)
+
     stat.stop()
     this._saveStat(stat)
     return finalAllocation.eligible
@@ -218,6 +226,9 @@ export default class Environment {
       allocation,
       groupAllocation
     )
+
+    const expo = this._getExposure(airshipObj, finalAllocation, 'isEnabled')
+    this._saveExposure(expo)
 
     stat.stop()
     this._saveStat(stat)
