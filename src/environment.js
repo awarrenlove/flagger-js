@@ -123,11 +123,9 @@ export default class Environment {
   _getExposure(flag, airshipObj, alloc, methodCalled) {
     const obj = airshipObj.getRawObject()
     return {
-      flagId: flag.id,
       flag: flag.codename,
       type: obj.type,
       id: obj.id,
-      treatmentId: alloc.treatment.treatmentId,
       treatment: alloc.treatment.codename,
       methodCalled: methodCalled,
       eligible: alloc.eligible

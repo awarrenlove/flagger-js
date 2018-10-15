@@ -4,10 +4,10 @@ exports[`\`bitcoin-pay\` gives treatment of \`variation-2\` and there is one exp
 Array [
   Object {
     "eligible": true,
+    "flag": "bitcoin-pay",
     "id": "1",
     "methodCalled": "getTreatment",
     "treatment": "variation-2",
-    "treatmentId": "10963",
     "type": "User",
   },
 ]
