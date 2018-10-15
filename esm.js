@@ -708,6 +708,104 @@ class Stat {
 Stat.TYPE_DURATION = 'stat_type__duration';
 Stat.TYPE_COUNT = 'stat_type__count';
 
+class Flag {
+  constructor(flag, delegate) {
+    if (typeof flag === 'string') {
+      this._isWild = true;
+      this.flagName = flag;
+    } else {
+      // These along with flag.flagType and flag.flagStatus
+      // should always be present
+      this.hashKey = flag.hashKey;
+      this.flag = flag;
+      this.codename = flag.codename; // Pass through fields
+
+      this.isPaused = flag.isPaused;
+      this.offTreatment = flag.offTreatment;
+      this.treatments = flag.treatments;
+      this.treatmentsMap = flag.treatmentsMap;
+      this.overrides = flag.overrides;
+      this.populations = flag.populations;
+      this.splits = flag.splits;
+    }
+
+    this.delegate = delegate;
+  }
+
+  isUncategorized() {
+    return Boolean(this._isWild) || this.flag.flagType === 'uncategorized';
+  }
+
+  isWild() {
+    return Boolean(this._isWild);
+  }
+
+  isArchived() {
+    return this.flag.flagStatus === 'archived';
+  }
+
+  setDelegate(delegate) {
+    this.delegate = delegate;
+  }
+
+  getType() {
+    if (this._isWild) {
+      logger(`Encountered uncategorized flag "${this.flagName}". Visit Airship web app to convert it to a real flag`);
+      return 'uncategorized';
+    }
+
+    const flagType = this.flag.flagType;
+
+    switch (flagType) {
+      case 'basic':
+        return 'basic';
+
+      case 'experiment':
+        return 'experiment';
+
+      case 'uncategorized':
+        return 'uncategorized';
+
+      default:
+        logger('Unexpected flag type encountered');
+        return null;
+    }
+  }
+
+  getTreatment(obj) {
+    if (!this.delegate) {
+      throw 'Delegate not provided to flag';
+    }
+
+    return this.delegate.getTreatment(this, obj);
+  }
+
+  getPayload(obj) {
+    if (!this.delegate) {
+      throw 'Delegate not provided to flag';
+    }
+
+    return this.delegate.getPayload(this, obj);
+  }
+
+  isEligible(obj) {
+    if (!this.delegate) {
+      throw 'Delegate not provided to flag';
+    }
+
+    return this.delegate.isEligible(this, obj);
+  }
+
+  isEnabled(obj) {
+    if (!this.delegate) {
+      throw 'Delegate not provided to flag';
+    }
+
+    return this.delegate.isEnabled(this, obj);
+  }
+
+}
+
 class Environment {
   identify(obj) {
     this.object = obj;
@@ -730,7 +828,7 @@ class Environment {
   shutdown() {}
 
   flag(flagName) {
-    const flag = this.router.getFlag(flagName);
+    const flag = this.router ? this.router.getFlag(flagName) : new Flag(flagName);
     flag.setDelegate(this);
     return flag;
   }
@@ -817,13 +915,15 @@ class Environment {
     return alloc1;
   }
 
-  _getExposure(airshipObj, alloc) {
+  _getExposure(flag, airshipObj, alloc, methodCalled) {
     const obj = airshipObj.getRawObject();
     return {
+      flag: flag.codename,
       type: obj.type,
       id: obj.id,
-      treatmentId: alloc.treatment.treatmentId,
-      treatment: alloc.treatment.codename
+      treatment: alloc.treatment.codename,
+      methodCalled: methodCalled,
+      eligible: alloc.eligible
     };
   }
 
@@ -844,7 +944,7 @@ class Environment {
 
     const finalAllocation = this._resolveAllocations(allocation, groupAllocation);
 
-    const expo = this._getExposure(airshipObj, finalAllocation);
+    const expo = this._getExposure(flag, airshipObj, finalAllocation, 'getTreatment');
 
     this._saveExposure(expo);
 
@@ -872,6 +972,10 @@ class Environment {
 
     const finalAllocation = this._resolveAllocations(allocation, groupAllocation);
 
+    const expo = this._getExposure(flag, airshipObj, finalAllocation, 'getPayload');
+
+    this._saveExposure(expo);
+
     stat.stop();
 
     this._saveStat(stat);
@@ -896,6 +1000,10 @@ class Environment {
 
     const finalAllocation = this._resolveAllocations(allocation, groupAllocation);
 
+    const expo = this._getExposure(flag, airshipObj, finalAllocation, 'isEligible');
+
+    this._saveExposure(expo);
+
     stat.stop();
 
     this._saveStat(stat);
@@ -919,6 +1027,10 @@ class Environment {
     const groupAllocation = this._getAllocation(flag, airshipObj.getGroup());
 
     const finalAllocation = this._resolveAllocations(allocation, groupAllocation);
+
+    const expo = this._getExposure(flag, airshipObj, finalAllocation, 'isEnabled');
+
+    this._saveExposure(expo);
 
     stat.stop();
 
@@ -1055,104 +1167,6 @@ class LRU {
 
 }
 
-class Flag {
-  constructor(flag, delegate) {
-    if (typeof flag === 'string') {
-      this._isWild = true;
-      this.flagName = flag;
-    } else {
-      // These along with flag.flagType and flag.flagStatus
-      // should always be present
-      this.hashKey = flag.hashKey;
-      this.flag = flag;
-      this.codename = flag.codename; // Pass through fields
-
-      this.isPaused = flag.isPaused;
-      this.offTreatment = flag.offTreatment;
-      this.treatments = flag.treatments;
-      this.treatmentsMap = flag.treatmentsMap;
-      this.overrides = flag.overrides;
-      this.populations = flag.populations;
-      this.splits = flag.splits;
-    }
-
-    this.delegate = delegate;
-  }
-
-  isUncategorized() {
-    return Boolean(this._isWild) || this.flag.flagType === 'uncategorized';
-  }
-
-  isWild() {
-    return Boolean(this._isWild);
-  }
-
-  isArchived() {
-    return this.flag.flagStatus === 'archived';
-  }
-
-  setDelegate(delegate) {
-    this.delegate = delegate;
-  }
-
-  getType() {
-    if (this._isWild) {
-      logger(`Encountered uncategorized flag "${this.flagName}". Visit Airship web app to convert it to a real flag`);
-      return 'uncategorized';
-    }
-
-    const flagType = this.flag.flagType;
-
-    switch (flagType) {
-      case 'basic':
-        return 'basic';
-
-      case 'experiment':
-        return 'experiment';
-
-      case 'uncategorized':
-        return 'uncategorized';
-
-      default:
-        logger('Unexpected flag type encountered');
-        return null;
-    }
-  }
-
-  getTreatment(obj) {
-    if (!this.delegate) {
-      throw 'Delegate not provided to flag';
-    }
-
-    return this.delegate.getTreatment(this, obj);
-  }
-
-  getPayload(obj) {
-    if (!this.delegate) {
-      throw 'Delegate not provided to flag';
-    }
-
-    return this.delegate.getPayload(this, obj);
-  }
-
-  isEligible(obj) {
-    if (!this.delegate) {
-      throw 'Delegate not provided to flag';
-    }
-
-    return this.delegate.isEligible(this, obj);
-  }
-
-  isEnabled(obj) {
-    if (!this.delegate) {
-      throw 'Delegate not provided to flag';
-    }
-
-    return this.delegate.isEnabled(this, obj);
-  }
-
-}
-
 class Router {
   constructor(gatingInfo) {
     this.gatingInfo = gatingInfo;
@@ -1222,6 +1236,46 @@ class Router {
     return null;
   }
 
+  getShouldIngestObjects() {
+    const sdkInfo = this.gatingInfo.sdkInfo;
+
+    if (sdkInfo && typeof sdkInfo.SDK_SHOULD_INGEST_OBJECTS === 'boolean') {
+      return sdkInfo.SDK_SHOULD_INGEST_OBJECTS;
+    }
+
+    return null;
+  }
+
+  getShouldIngestStats() {
+    const sdkInfo = this.gatingInfo.sdkInfo;
+
+    if (sdkInfo && typeof sdkInfo.SDK_SHOULD_INGEST_STATS === 'boolean') {
+      return sdkInfo.SDK_SHOULD_INGEST_STATS;
+    }
+
+    return null;
+  }
+
+  getShouldIngestExposures() {
+    const sdkInfo = this.gatingInfo.sdkInfo;
+
+    if (sdkInfo && typeof sdkInfo.SDK_SHOULD_INGEST_EXPOSURES === 'boolean') {
+      return sdkInfo.SDK_SHOULD_INGEST_EXPOSURES;
+    }
+
+    return null;
+  }
+
+  getShouldIngestFlags() {
+    const sdkInfo = this.gatingInfo.sdkInfo;
+
+    if (sdkInfo && typeof sdkInfo.SDK_SHOULD_INGEST_FLAGS === 'boolean') {
+      return sdkInfo.SDK_SHOULD_INGEST_FLAGS;
+    }
+
+    return null;
+  }
+
   getFlag(flagName) {
     return this.gatingInfoMap[flagName] || new Flag(flagName);
   }
@@ -1250,6 +1304,7 @@ class Airship extends Environment {
   constructor(gatingInfoListener) {
     super();
     this.gatingInfoListener = gatingInfoListener;
+    this.init();
   }
 
   init() {
@@ -1262,6 +1317,10 @@ class Airship extends Environment {
     this.oldFlags = new Set();
     this.objectLRUCache = new LRU(500);
     this.firstIngestion = true;
+    this.shouldIngestObjects = true;
+    this.shouldIngestStats = true;
+    this.shouldIngestExposures = true;
+    this.shouldIngestFlags = true;
     this.restartIngestionWorker();
   }
 
@@ -1276,6 +1335,22 @@ class Airship extends Environment {
   }
 
   async maybeIngest(force = false) {
+    if (!this.shouldIngestObjects) {
+      this.objects = [];
+    }
+
+    if (!this.shouldIngestStats) {
+      this.stats = [];
+    }
+
+    if (!this.shouldIngestExposures) {
+      this.exposures = [];
+    }
+
+    if (!this.shouldIngestFlags) {
+      this.flags = new Set();
+    }
+
     let shouldIngest = force || this.objects.length >= this.ingestionMaxItems || this.stats.length >= this.ingestionMaxItems || this.exposures.length >= this.ingestionMaxItems || this.flags.size > 0;
 
     if (this.firstIngestion) {
@@ -1437,6 +1512,10 @@ class Airship extends Environment {
   updateSDK() {
     const ingestionMaxItems = this.router.getIngestionMaxItem();
     const ingestionInterval = this.router.getIngestionInterval();
+    const shouldIngestObjects = this.router.getShouldIngestObjects();
+    const shouldIngestStats = this.router.getShouldIngestStats();
+    const shouldIngestExposures = this.router.getShouldIngestExposures();
+    const shouldIngestFlags = this.router.getShouldIngestFlags();
 
     if (typeof ingestionMaxItems === 'number' && ingestionMaxItems > 0) {
       this.ingestionMaxItems = ingestionMaxItems;
@@ -1445,6 +1524,22 @@ class Airship extends Environment {
     if (typeof ingestionInterval === 'number' && ingestionInterval > 0 && ingestionInterval != this.ingestionInterval) {
       this.ingestionInterval = ingestionInterval;
       this.restartIngestionWorker();
+    }
+
+    if (typeof shouldIngestObjects === 'boolean') {
+      this.shouldIngestObjects = shouldIngestObjects;
+    }
+
+    if (typeof shouldIngestStats === 'boolean') {
+      this.shouldIngestStats = shouldIngestStats;
+    }
+
+    if (typeof shouldIngestExposures === 'boolean') {
+      this.shouldIngestExposures = shouldIngestExposures;
+    }
+
+    if (typeof shouldIngestFlags === 'boolean') {
+      this.shouldIngestFlags = shouldIngestFlags;
     }
   }
 
