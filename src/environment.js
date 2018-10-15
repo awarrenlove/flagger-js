@@ -175,6 +175,9 @@ export default class Environment {
       groupAllocation
     )
 
+    const expo = this._getExposure(airshipObj, finalAllocation, 'getPayload')
+    this._saveExposure(expo)
+
     stat.stop()
     this._saveStat(stat)
     return finalAllocation.treatment.payload
@@ -198,6 +201,9 @@ export default class Environment {
       groupAllocation
     )
 
+    const expo = this._getExposure(airshipObj, finalAllocation, 'isEligible')
+    this._saveExposure(expo)
+
     stat.stop()
     this._saveStat(stat)
     return finalAllocation.eligible
@@ -220,6 +226,9 @@ export default class Environment {
       allocation,
       groupAllocation
     )
+
+    const expo = this._getExposure(airshipObj, finalAllocation, 'isEnabled')
+    this._saveExposure(expo)
 
     stat.stop()
     this._saveStat(stat)
