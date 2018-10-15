@@ -69,6 +69,38 @@ export default class Router {
     return null
   }
 
+  getShouldIngestObjects() {
+    const sdkInfo = this.gatingInfo.sdkInfo
+    if (sdkInfo && typeof sdkInfo.SDK_SHOULD_INGEST_OBJECTS === 'boolean') {
+      return sdkInfo.SDK_SHOULD_INGEST_OBJECTS
+    }
+    return null
+  }
+
+  getShouldIngestStats() {
+    const sdkInfo = this.gatingInfo.sdkInfo
+    if (sdkInfo && typeof sdkInfo.SDK_SHOULD_INGEST_STATS === 'boolean') {
+      return sdkInfo.SDK_SHOULD_INGEST_STATS
+    }
+    return null
+  }
+
+  getShouldIngestExposures() {
+    const sdkInfo = this.gatingInfo.sdkInfo
+    if (sdkInfo && typeof sdkInfo.SDK_SHOULD_INGEST_EXPOSURES === 'boolean') {
+      return sdkInfo.SDK_SHOULD_INGEST_EXPOSURES
+    }
+    return null
+  }
+
+  getShouldIngestFlags() {
+    const sdkInfo = this.gatingInfo.sdkInfo
+    if (sdkInfo && typeof sdkInfo.SDK_SHOULD_INGEST_FLAGS === 'boolean') {
+      return sdkInfo.SDK_SHOULD_INGEST_FLAGS
+    }
+    return null
+  }
+
   getFlag(flagName) {
     return this.gatingInfoMap[flagName] || new Flag(flagName)
   }

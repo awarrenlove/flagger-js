@@ -941,3 +941,8 @@ test('postContent should work', async () => {
   )
   expect(result).toEqual('pong')
 })
+
+test('.flag() should work before initialization', () => {
+  const environment = new Airship()
+  expect(environment.flag('some-flag').isEnabled()).toBeFalsy()
+})

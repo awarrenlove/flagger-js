@@ -2,6 +2,7 @@ import {logger} from './logger'
 import AirshipObject from './object'
 import Population from './population'
 import Stat from './stat'
+import Flag from './flag'
 
 export default class Environment {
   identify(obj) {
@@ -26,7 +27,9 @@ export default class Environment {
   shutdown() {}
 
   flag(flagName) {
-    const flag = this.router.getFlag(flagName)
+    const flag = this.router
+      ? this.router.getFlag(flagName)
+      : new Flag(flagName)
     flag.setDelegate(this)
     return flag
   }
@@ -117,13 +120,15 @@ export default class Environment {
     return alloc1
   }
 
-  _getExposure(airshipObj, alloc) {
+  _getExposure(flag, airshipObj, alloc, methodCalled) {
     const obj = airshipObj.getRawObject()
     return {
+      flag: flag.codename,
       type: obj.type,
       id: obj.id,
-      treatmentId: alloc.treatment.treatmentId,
-      treatment: alloc.treatment.codename
+      treatment: alloc.treatment.codename,
+      methodCalled: methodCalled,
+      eligible: alloc.eligible
     }
   }
 
@@ -145,7 +150,12 @@ export default class Environment {
       groupAllocation
     )
 
-    const expo = this._getExposure(airshipObj, finalAllocation)
+    const expo = this._getExposure(
+      flag,
+      airshipObj,
+      finalAllocation,
+      'getTreatment'
+    )
     this._saveExposure(expo)
 
     stat.stop()
@@ -170,6 +180,14 @@ export default class Environment {
       groupAllocation
     )
 
+    const expo = this._getExposure(
+      flag,
+      airshipObj,
+      finalAllocation,
+      'getPayload'
+    )
+    this._saveExposure(expo)
+
     stat.stop()
     this._saveStat(stat)
     return finalAllocation.treatment.payload
@@ -193,6 +211,14 @@ export default class Environment {
       groupAllocation
     )
 
+    const expo = this._getExposure(
+      flag,
+      airshipObj,
+      finalAllocation,
+      'isEligible'
+    )
+    this._saveExposure(expo)
+
     stat.stop()
     this._saveStat(stat)
     return finalAllocation.eligible
@@ -215,6 +241,14 @@ export default class Environment {
       allocation,
       groupAllocation
     )
+
+    const expo = this._getExposure(
+      flag,
+      airshipObj,
+      finalAllocation,
+      'isEnabled'
+    )
+    this._saveExposure(expo)
 
     stat.stop()
     this._saveStat(stat)

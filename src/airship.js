@@ -27,6 +27,7 @@ export default class Airship extends Environment {
     super()
 
     this.gatingInfoListener = gatingInfoListener
+    this.init()
   }
 
   init() {
@@ -42,6 +43,11 @@ export default class Airship extends Environment {
     this.objectLRUCache = new LRU(500)
     this.firstIngestion = true
 
+    this.shouldIngestObjects = true
+    this.shouldIngestStats = true
+    this.shouldIngestExposures = true
+    this.shouldIngestFlags = true
+
     this.restartIngestionWorker()
   }
 
@@ -56,6 +62,22 @@ export default class Airship extends Environment {
   }
 
   async maybeIngest(force = false) {
+    if (!this.shouldIngestObjects) {
+      this.objects = []
+    }
+
+    if (!this.shouldIngestStats) {
+      this.stats = []
+    }
+
+    if (!this.shouldIngestExposures) {
+      this.exposures = []
+    }
+
+    if (!this.shouldIngestFlags) {
+      this.flags = new Set()
+    }
+
     let shouldIngest =
       force ||
       (this.objects.length >= this.ingestionMaxItems ||
@@ -251,6 +273,10 @@ export default class Airship extends Environment {
   updateSDK() {
     const ingestionMaxItems = this.router.getIngestionMaxItem()
     const ingestionInterval = this.router.getIngestionInterval()
+    const shouldIngestObjects = this.router.getShouldIngestObjects()
+    const shouldIngestStats = this.router.getShouldIngestStats()
+    const shouldIngestExposures = this.router.getShouldIngestExposures()
+    const shouldIngestFlags = this.router.getShouldIngestFlags()
 
     if (typeof ingestionMaxItems === 'number' && ingestionMaxItems > 0) {
       this.ingestionMaxItems = ingestionMaxItems
@@ -262,6 +288,18 @@ export default class Airship extends Environment {
     ) {
       this.ingestionInterval = ingestionInterval
       this.restartIngestionWorker()
+    }
+    if (typeof shouldIngestObjects === 'boolean') {
+      this.shouldIngestObjects = shouldIngestObjects
+    }
+    if (typeof shouldIngestStats === 'boolean') {
+      this.shouldIngestStats = shouldIngestStats
+    }
+    if (typeof shouldIngestExposures === 'boolean') {
+      this.shouldIngestExposures = shouldIngestExposures
+    }
+    if (typeof shouldIngestFlags === 'boolean') {
+      this.shouldIngestFlags = shouldIngestFlags
     }
   }
 
