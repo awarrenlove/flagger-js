@@ -154,7 +154,7 @@ export default class Environment {
       flag,
       airshipObj,
       finalAllocation,
-      'getTreatment'
+      'get_treatment'
     )
     this._saveExposure(expo)
 
@@ -184,7 +184,7 @@ export default class Environment {
       flag,
       airshipObj,
       finalAllocation,
-      'getPayload'
+      'get_payload'
     )
     this._saveExposure(expo)
 
@@ -215,7 +215,7 @@ export default class Environment {
       flag,
       airshipObj,
       finalAllocation,
-      'isEligible'
+      'is_eligible'
     )
     this._saveExposure(expo)
 
@@ -246,7 +246,7 @@ export default class Environment {
       flag,
       airshipObj,
       finalAllocation,
-      'isEnabled'
+      'is_enabled'
     )
     this._saveExposure(expo)
 

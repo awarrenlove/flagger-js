@@ -6,7 +6,7 @@ Array [
     "eligible": true,
     "flag": "bitcoin-pay",
     "id": "1",
-    "methodCalled": "getTreatment",
+    "methodCalled": "get_treatment",
     "treatment": "variation-2",
     "type": "User",
   },
