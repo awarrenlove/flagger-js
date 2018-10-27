@@ -313,51 +313,47 @@ export default class Airship extends Environment {
     this.subscribeToUpdates = subscribeToUpdates
     this.init()
 
-    this.success = null
+    this.failed = false
 
-    // First try our server
+    // First try CloudFront distribution
     try {
-      const stat = new Stat('duration__gating_info', Stat.TYPE_DURATION)
+      const stat = new Stat(
+        'duration__cloudfront_gating_info',
+        Stat.TYPE_DURATION
+      )
       stat.start()
-      const result = await this._getGatingInfo()
+      const result = await this._getGatingInfoFromCloudFront()
       const gatingInfo = result
       this.router = new Router(gatingInfo)
       this.updateSDK()
       if (this.gatingInfoListener) {
         this.gatingInfoListener(gatingInfo)
       }
-      this.success = true
       stat.stop()
       this._saveStat(stat)
     } catch (err) {
       logger(err)
-    }
 
-    // Next try CloudFront distribution
-    if (!this.success) {
+      // Next try our server
       try {
-        const stat = new Stat(
-          'duration__cloudfront_gating_info',
-          Stat.TYPE_DURATION
-        )
+        const stat = new Stat('duration__gating_info', Stat.TYPE_DURATION)
         stat.start()
-        const result = await this._getGatingInfoFromCloudFront()
+        const result = await this._getGatingInfo()
         const gatingInfo = result
         this.router = new Router(gatingInfo)
         this.updateSDK()
         if (this.gatingInfoListener) {
           this.gatingInfoListener(gatingInfo)
         }
-        this.success = true
         stat.stop()
         this._saveStat(stat)
       } catch (err) {
         logger(err)
-        this.success = false
+        this.failed = true
       }
     }
 
-    if (!this.success) {
+    if (this.failed) {
       throw 'Failed to retrieve initial gating information'
     }
 

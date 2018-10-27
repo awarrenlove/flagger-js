@@ -44,7 +44,7 @@ export class FlaggerBase {
         this.environment.envKey === envKey &&
         this.environment.subscribeToUpdates === subscribeToUpdates &&
         this.environment.environmentPromise &&
-        this.environment.success !== false
+        !this.environment.failed
       ) {
         await this.environment.environmentPromise
       } else {
