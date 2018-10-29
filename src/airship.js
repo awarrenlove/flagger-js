@@ -395,6 +395,23 @@ export default class Airship extends Environment {
         this._subscribeToUpdates()
       }
     }, 5 * 1000)
+
+    this.pollGatingInfoInterval = setInterval(() => {
+      const now = Date.now()
+      const then = this.lastSSEConnectTimestamp || Date.now()
+      if ((now - then) / 1000 > 30) {
+        logger(
+          'Did not receive a keepalive for more than 30 seconds. Polling gating info.'
+        )
+        this.updateGatingInfo(
+          'duration__cloudfront_gating_info',
+          this._getGatingInfoFromCloudFront.bind(this)
+        ).then(
+          () => logger('Polled gating info from CloudFront'),
+          () => logger('Failed polling gating info from CloudFront')
+        )
+      }
+    }, 60 * 1000)
   }
 
   _unpoliceSSE() {
@@ -405,6 +422,11 @@ export default class Airship extends Environment {
       if (this.lastSSEConnectTimestamp) {
         delete this.lastSSEConnectTimestamp
       }
+    }
+
+    if (this.pollGatingInfoInterval) {
+      clearInterval(this.pollGatingInfoInterval)
+      delete this.pollGatingInfoInterval
     }
   }
 
