@@ -303,6 +303,27 @@ export default class Airship extends Environment {
     }
   }
 
+  async updateGatingInfo(statName, fetchFn) {
+    try {
+      const stat = new Stat(statName, Stat.TYPE_DURATION)
+      stat.start()
+      const result = await fetchFn()
+      const gatingInfo = result
+      this.router = new Router(gatingInfo)
+      this.updateSDK()
+      if (this.gatingInfoListener) {
+        this.gatingInfoListener(gatingInfo)
+      }
+      stat.stop()
+      this._saveStat(stat)
+    } catch (err) {
+      logger(err)
+
+      return false
+    }
+    return true
+  }
+
   async configure(envKey, subscribeToUpdates = true) {
     const envKeyRegex = /^[a-z0-9]{16}$/
     if (!envKey.match(envKeyRegex)) {
@@ -316,41 +337,17 @@ export default class Airship extends Environment {
     this.failed = false
 
     // First try our server
-    try {
-      const stat = new Stat('duration__gating_info', Stat.TYPE_DURATION)
-      stat.start()
-      const result = await this._getGatingInfo()
-      const gatingInfo = result
-      this.router = new Router(gatingInfo)
-      this.updateSDK()
-      if (this.gatingInfoListener) {
-        this.gatingInfoListener(gatingInfo)
-      }
-      stat.stop()
-      this._saveStat(stat)
-    } catch (err) {
-      logger(err)
-
-      // Next try CloudFront distribution
-      try {
-        const stat = new Stat(
-          'duration__cloudfront_gating_info',
-          Stat.TYPE_DURATION
-        )
-        stat.start()
-        const result = await this._getGatingInfoFromCloudFront()
-        const gatingInfo = result
-        this.router = new Router(gatingInfo)
-        this.updateSDK()
-        if (this.gatingInfoListener) {
-          this.gatingInfoListener(gatingInfo)
-        }
-        stat.stop()
-        this._saveStat(stat)
-      } catch (err) {
-        logger(err)
-        this.failed = true
-      }
+    if (
+      !(await this.updateGatingInfo(
+        'duration__gating_info',
+        this._getGatingInfo.bind(this)
+      ))
+    ) {
+      // Then try CloudFront distribution
+      this.failed = !(await this.updateGatingInfo(
+        'duration__cloudfront_gating_info',
+        this._getGatingInfoFromCloudFront.bind(this)
+      ))
     }
 
     if (this.failed) {
