@@ -399,7 +399,7 @@ export default class Airship extends Environment {
     this.pollGatingInfoInterval = setInterval(() => {
       const now = Date.now()
       const then = this.lastSSEConnectTimestamp || 0
-      if ((now - then) / 1000 > 30) {
+      if ((now - then) / 1000 > 60) {
         logger(
           'Did not receive a keepalive for more than 30 seconds. Polling gating info.'
         )
