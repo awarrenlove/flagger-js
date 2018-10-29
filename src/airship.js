@@ -303,6 +303,27 @@ export default class Airship extends Environment {
     }
   }
 
+  async updateGatingInfo(statName, fetchFn) {
+    try {
+      const stat = new Stat(statName, Stat.TYPE_DURATION)
+      stat.start()
+      const result = await fetchFn()
+      const gatingInfo = result
+      this.router = new Router(gatingInfo)
+      this.updateSDK()
+      if (this.gatingInfoListener) {
+        this.gatingInfoListener(gatingInfo)
+      }
+      stat.stop()
+      this._saveStat(stat)
+    } catch (err) {
+      logger(err)
+
+      return false
+    }
+    return true
+  }
+
   async configure(envKey, subscribeToUpdates = true) {
     const envKeyRegex = /^[a-z0-9]{16}$/
     if (!envKey.match(envKeyRegex)) {
@@ -315,42 +336,18 @@ export default class Airship extends Environment {
 
     this.failed = false
 
-    // First try CloudFront distribution
-    try {
-      const stat = new Stat(
+    // First try our server
+    if (
+      !(await this.updateGatingInfo(
+        'duration__gating_info',
+        this._getGatingInfo.bind(this)
+      ))
+    ) {
+      // Then try CloudFront distribution
+      this.failed = !(await this.updateGatingInfo(
         'duration__cloudfront_gating_info',
-        Stat.TYPE_DURATION
-      )
-      stat.start()
-      const result = await this._getGatingInfoFromCloudFront()
-      const gatingInfo = result
-      this.router = new Router(gatingInfo)
-      this.updateSDK()
-      if (this.gatingInfoListener) {
-        this.gatingInfoListener(gatingInfo)
-      }
-      stat.stop()
-      this._saveStat(stat)
-    } catch (err) {
-      logger(err)
-
-      // Next try our server
-      try {
-        const stat = new Stat('duration__gating_info', Stat.TYPE_DURATION)
-        stat.start()
-        const result = await this._getGatingInfo()
-        const gatingInfo = result
-        this.router = new Router(gatingInfo)
-        this.updateSDK()
-        if (this.gatingInfoListener) {
-          this.gatingInfoListener(gatingInfo)
-        }
-        stat.stop()
-        this._saveStat(stat)
-      } catch (err) {
-        logger(err)
-        this.failed = true
-      }
+        this._getGatingInfoFromCloudFront.bind(this)
+      ))
     }
 
     if (this.failed) {
@@ -390,7 +387,7 @@ export default class Airship extends Environment {
     this._unpoliceSSE()
     this.policeSSEInterval = setInterval(() => {
       const now = Date.now()
-      const then = this.lastSSEConnectTimestamp || Date.now()
+      const then = this.lastSSEConnectTimestamp || 0
       if ((now - then) / 1000 > 30) {
         logger(
           'Did not receive a keepalive for more than 30 seconds. Reconnecting.'
@@ -398,6 +395,23 @@ export default class Airship extends Environment {
         this._subscribeToUpdates()
       }
     }, 5 * 1000)
+
+    this.pollGatingInfoInterval = setInterval(() => {
+      const now = Date.now()
+      const then = this.lastSSEConnectTimestamp || 0
+      if ((now - then) / 1000 > 60) {
+        logger(
+          'Did not receive a keepalive for more than 30 seconds. Polling gating info.'
+        )
+        this.updateGatingInfo(
+          'duration__cloudfront_gating_info',
+          this._getGatingInfoFromCloudFront.bind(this)
+        ).then(
+          () => logger('Polled gating info from CloudFront'),
+          () => logger('Failed polling gating info from CloudFront')
+        )
+      }
+    }, 60 * 1000)
   }
 
   _unpoliceSSE() {
@@ -408,6 +422,11 @@ export default class Airship extends Environment {
       if (this.lastSSEConnectTimestamp) {
         delete this.lastSSEConnectTimestamp
       }
+    }
+
+    if (this.pollGatingInfoInterval) {
+      clearInterval(this.pollGatingInfoInterval)
+      delete this.pollGatingInfoInterval
     }
   }
 
