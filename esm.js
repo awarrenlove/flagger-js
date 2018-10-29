@@ -944,7 +944,7 @@ class Environment {
 
     const finalAllocation = this._resolveAllocations(allocation, groupAllocation);
 
-    const expo = this._getExposure(flag, airshipObj, finalAllocation, 'getTreatment');
+    const expo = this._getExposure(flag, airshipObj, finalAllocation, 'get_treatment');
 
     this._saveExposure(expo);
 
@@ -972,7 +972,7 @@ class Environment {
 
     const finalAllocation = this._resolveAllocations(allocation, groupAllocation);
 
-    const expo = this._getExposure(flag, airshipObj, finalAllocation, 'getPayload');
+    const expo = this._getExposure(flag, airshipObj, finalAllocation, 'get_payload');
 
     this._saveExposure(expo);
 
@@ -1000,7 +1000,7 @@ class Environment {
 
     const finalAllocation = this._resolveAllocations(allocation, groupAllocation);
 
-    const expo = this._getExposure(flag, airshipObj, finalAllocation, 'isEligible');
+    const expo = this._getExposure(flag, airshipObj, finalAllocation, 'is_eligible');
 
     this._saveExposure(expo);
 
@@ -1028,7 +1028,7 @@ class Environment {
 
     const finalAllocation = this._resolveAllocations(allocation, groupAllocation);
 
-    const expo = this._getExposure(flag, airshipObj, finalAllocation, 'isEnabled');
+    const expo = this._getExposure(flag, airshipObj, finalAllocation, 'is_enabled');
 
     this._saveExposure(expo);
 
@@ -1290,7 +1290,7 @@ class Router {
 
 }
 
-var version = "2.0.2";
+var version = "2.0.3";
 
 const SERVER_URL = 'https://api.airshiphq.com';
 const IDENTIFY_ENDPOINT = `${SERVER_URL}/v2/identify`;
@@ -1543,6 +1543,30 @@ class Airship extends Environment {
     }
   }
 
+  async updateGatingInfo(statName, fetchFn) {
+    try {
+      const stat = new Stat(statName, Stat.TYPE_DURATION);
+      stat.start();
+      const result = await fetchFn();
+      const gatingInfo = result;
+      this.router = new Router(gatingInfo);
+      this.updateSDK();
+
+      if (this.gatingInfoListener) {
+        this.gatingInfoListener(gatingInfo);
+      }
+
+      stat.stop();
+
+      this._saveStat(stat);
+    } catch (err) {
+      logger(err);
+      return false;
+    }
+
+    return true;
+  }
+
   async configure(envKey, subscribeToUpdates = true) {
     const envKeyRegex = /^[a-z0-9]{16}$/;
 
@@ -1553,53 +1577,14 @@ class Airship extends Environment {
     this.envKey = envKey;
     this.subscribeToUpdates = subscribeToUpdates;
     this.init();
-    this.success = null; // First try our server
+    this.failed = false; // First try our server
 
-    try {
-      const stat = new Stat('duration__gating_info', Stat.TYPE_DURATION);
-      stat.start();
-      const result = await this._getGatingInfo();
-      const gatingInfo = result;
-      this.router = new Router(gatingInfo);
-      this.updateSDK();
-
-      if (this.gatingInfoListener) {
-        this.gatingInfoListener(gatingInfo);
-      }
-
-      this.success = true;
-      stat.stop();
-
-      this._saveStat(stat);
-    } catch (err) {
-      logger(err);
-    } // Next try CloudFront distribution
-
-
-    if (!this.success) {
-      try {
-        const stat = new Stat('duration__cloudfront_gating_info', Stat.TYPE_DURATION);
-        stat.start();
-        const result = await this._getGatingInfoFromCloudFront();
-        const gatingInfo = result;
-        this.router = new Router(gatingInfo);
-        this.updateSDK();
-
-        if (this.gatingInfoListener) {
-          this.gatingInfoListener(gatingInfo);
-        }
-
-        this.success = true;
-        stat.stop();
-
-        this._saveStat(stat);
-      } catch (err) {
-        logger(err);
-        this.success = false;
-      }
+    if (!(await this.updateGatingInfo('duration__gating_info', this._getGatingInfo.bind(this)))) {
+      // Then try CloudFront distribution
+      this.failed = !(await this.updateGatingInfo('duration__cloudfront_gating_info', this._getGatingInfoFromCloudFront.bind(this)));
     }
 
-    if (!this.success) {
+    if (this.failed) {
       throw 'Failed to retrieve initial gating information';
     }
 
@@ -1641,7 +1626,7 @@ class Airship extends Environment {
 
     this.policeSSEInterval = setInterval(() => {
       const now = Date.now();
-      const then = this.lastSSEConnectTimestamp || Date.now();
+      const then = this.lastSSEConnectTimestamp || 0;
 
       if ((now - then) / 1000 > 30) {
         logger('Did not receive a keepalive for more than 30 seconds. Reconnecting.');
@@ -1649,6 +1634,15 @@ class Airship extends Environment {
         this._subscribeToUpdates();
       }
     }, 5 * 1000);
+    this.pollGatingInfoInterval = setInterval(() => {
+      const now = Date.now();
+      const then = this.lastSSEConnectTimestamp || 0;
+
+      if ((now - then) / 1000 > 60) {
+        logger('Did not receive a keepalive for more than 30 seconds. Polling gating info.');
+        this.updateGatingInfo('duration__cloudfront_gating_info', this._getGatingInfoFromCloudFront.bind(this)).then(() => logger('Polled gating info from CloudFront'), () => logger('Failed polling gating info from CloudFront'));
+      }
+    }, 60 * 1000);
   }
 
   _unpoliceSSE() {
@@ -1659,6 +1653,11 @@ class Airship extends Environment {
       if (this.lastSSEConnectTimestamp) {
         delete this.lastSSEConnectTimestamp;
       }
+    }
+
+    if (this.pollGatingInfoInterval) {
+      clearInterval(this.pollGatingInfoInterval);
+      delete this.pollGatingInfoInterval;
     }
   }
 
@@ -2005,7 +2004,7 @@ class FlaggerBase {
     const subscribeToUpdates = options.subscribeToUpdates === false ? false : true;
 
     if (envKey) {
-      if (this.environment && this.environment.envKey === envKey && this.environment.subscribeToUpdates === subscribeToUpdates && this.environment.environmentPromise && this.environment.success !== false) {
+      if (this.environment && this.environment.envKey === envKey && this.environment.subscribeToUpdates === subscribeToUpdates && this.environment.environmentPromise && !this.environment.failed) {
         await this.environment.environmentPromise;
       } else {
         if (this.environment) {

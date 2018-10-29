@@ -1,6 +1,6 @@
 {
   "name": "flagger",
-  "version": "2.0.2",
+  "version": "2.0.3",
   "description": "Library for feature flagging",
   "browser": {
     "./esm.js": "./flagger.js",
