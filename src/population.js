@@ -180,6 +180,10 @@ export default class Population {
     }
 
     if (matches) {
+      if (this.population.percentage === 0) {
+        return {eligible: false}
+      }
+
       const samplingHashKey = `SAMPLING:control_${flag.hashKey}:env_${
         env.hashKey
       }:rule_set_${this.population.hashKey}:client_object_${obj.type}_${obj.id}`
@@ -189,17 +193,13 @@ export default class Population {
       if (hashedPercentage <= this.population.percentage) {
         const splits = sticky
           ? this.population.universes[
-              Math.floor(parseInt(hashedPercentage * 100)) - 1
+              Math.max(Math.floor(parseInt(hashedPercentage * 100)) - 1, 0)
             ]
           : flag.splits
         const splitsMap = {}
         for (let i = 0; i < splits.length; i++) {
           const split = splits[i]
           splitsMap[split.treatmentId] = split
-        }
-
-        if (this.population.percentage === 0) {
-          return {eligible: false}
         }
 
         const allocationHashKey = `DISTRIBUTION:control_${flag.hashKey}:env_${
