@@ -180,17 +180,16 @@ export default class Population {
     }
 
     if (matches) {
-      if (this.population.percentage === 0) {
-        return {eligible: false}
-      }
-
       const samplingHashKey = `SAMPLING:control_${flag.hashKey}:env_${
         env.hashKey
       }:rule_set_${this.population.hashKey}:client_object_${obj.type}_${obj.id}`
 
       const hashedPercentage = getHashedValue(samplingHashKey)
 
-      if (hashedPercentage <= this.population.percentage) {
+      if (
+        hashedPercentage <= this.population.percentage &&
+        this.population.percentage > 0
+      ) {
         const splits = sticky
           ? this.population.universes[
               Math.max(parseInt(hashedPercentage * 100) - 1, 0)
