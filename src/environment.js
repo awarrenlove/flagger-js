@@ -160,7 +160,9 @@ export default class Environment {
 
     stat.stop()
     this._saveStat(stat)
-    return finalAllocation.treatment.codename
+    return finalAllocation.treatment.isGhost
+      ? (flag.offTreatment && flag.offTreatment.codename) || 'off'
+      : finalAllocation.treatment.codename
   }
 
   getPayload(flag, obj) {
@@ -190,7 +192,9 @@ export default class Environment {
 
     stat.stop()
     this._saveStat(stat)
-    return finalAllocation.treatment.payload
+    return finalAllocation.treatment.isGhost
+      ? (flag.offTreatment && flag.offTreatment.payload) || null
+      : finalAllocation.treatment.payload
   }
 
   isEligible(flag, obj) {
