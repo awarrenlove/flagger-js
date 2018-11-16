@@ -170,17 +170,6 @@ export default class Population {
       return {eligible: false}
     }
 
-    const splits = sticky
-      ? this.population.universes[
-          Math.floor(parseInt(this.population.percentage * 100)) - 1
-        ]
-      : flag.splits
-    const splitsMap = {}
-    for (let i = 0; i < splits.length; i++) {
-      const split = splits[i]
-      splitsMap[split.treatmentId] = split
-    }
-
     const rules = population.rules
 
     let matches = true
@@ -195,7 +184,20 @@ export default class Population {
         env.hashKey
       }:rule_set_${this.population.hashKey}:client_object_${obj.type}_${obj.id}`
 
-      if (getHashedValue(samplingHashKey) <= this.population.percentage) {
+      const hashedPercentage = getHashedValue(samplingHashKey)
+
+      if (hashedPercentage <= this.population.percentage) {
+        const splits = sticky
+          ? this.population.universes[
+              Math.floor(parseInt(hashedPercentage * 100)) - 1
+            ]
+          : flag.splits
+        const splitsMap = {}
+        for (let i = 0; i < splits.length; i++) {
+          const split = splits[i]
+          splitsMap[split.treatmentId] = split
+        }
+
         if (this.population.percentage === 0) {
           return {eligible: false}
         }
