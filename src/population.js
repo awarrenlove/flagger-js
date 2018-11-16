@@ -192,7 +192,7 @@ export default class Population {
       ) {
         const splits = sticky
           ? this.population.universes[
-              Math.max(parseInt(hashedPercentage * 100) - 1, 0)
+              Math.max(Math.floor(hashedPercentage * 100) - 1, 0)
             ]
           : flag.splits
         const splitsMap = {}
