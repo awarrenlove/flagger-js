@@ -8,6 +8,11 @@ let environment1, environment2
 
 const nockCloud1 = () => {
   nock('https://api.airshiphq.com', {encodedQueryParams: true})
+    .persist()
+    .post('/v2/identify/onz2150xjon6pkjr', () => true)
+    .reply(200)
+
+  nock('https://api.airshiphq.com', {encodedQueryParams: true})
     .get('/v2/gating-info/onz2150xjon6pkjr')
     .query({casing: 'camel'})
     .reply(200, {
@@ -632,6 +637,11 @@ const nockCloud1 = () => {
 }
 
 const nockCloud2 = () => {
+  nock('https://api.airshiphq.com', {encodedQueryParams: true})
+    .persist()
+    .post('/v2/identify/z2veg4bd2vnuu8j8', () => true)
+    .reply(200)
+
   nock('https://api.airshiphq.com', {encodedQueryParams: true})
     .get('/v2/gating-info/z2veg4bd2vnuu8j8')
     .query({casing: 'camel'})
