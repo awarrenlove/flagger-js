@@ -1,4 +1,5 @@
 import nock from 'nock'
+import sinon from 'sinon'
 
 import Airship from './airship'
 import Stat from './stat'
@@ -6,6 +7,11 @@ import Stat from './stat'
 let environment1, environment2
 
 const nockCloud1 = () => {
+  nock('https://api.airshiphq.com', {encodedQueryParams: true})
+    .persist()
+    .post('/v2/identify/onz2150xjon6pkjr', () => true)
+    .reply(200)
+
   nock('https://api.airshiphq.com', {encodedQueryParams: true})
     .get('/v2/gating-info/onz2150xjon6pkjr')
     .query({casing: 'camel'})
@@ -632,6 +638,11 @@ const nockCloud1 = () => {
 
 const nockCloud2 = () => {
   nock('https://api.airshiphq.com', {encodedQueryParams: true})
+    .persist()
+    .post('/v2/identify/z2veg4bd2vnuu8j8', () => true)
+    .reply(200)
+
+  nock('https://api.airshiphq.com', {encodedQueryParams: true})
     .get('/v2/gating-info/z2veg4bd2vnuu8j8')
     .query({casing: 'camel'})
     .reply(200, {
@@ -879,9 +890,21 @@ test('`bitcoin-pay` is not enabled for object 10 due to age requirement using re
   ).toEqual(false)
 })
 
-test('`bitcoin-pay` gives treatment of `variation-2` and there is one exposure', () => {
-  environment2.flag('bitcoin-pay').getTreatment({id: 1})
-  expect(environment2.exposures).toMatchSnapshot()
+describe('Tests using faked time', () => {
+  let clock
+
+  beforeEach(() => {
+    clock = sinon.useFakeTimers()
+  })
+
+  afterEach(() => {
+    clock.restore()
+  })
+
+  test('`bitcoin-pay` gives treatment of `variation-2` and there is one exposure', () => {
+    environment2.flag('bitcoin-pay').getTreatment({id: 1})
+    expect(environment2.exposures).toMatchSnapshot()
+  })
 })
 
 test('whitelist group treatment takes precedence over individual sampling', () => {

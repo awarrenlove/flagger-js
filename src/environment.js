@@ -128,7 +128,8 @@ export default class Environment {
       id: obj.id,
       treatment: alloc.treatment.codename,
       methodCalled: methodCalled,
-      eligible: alloc.eligible
+      eligible: alloc.eligible,
+      timeExposed: new Date().toISOString()
     }
   }
 
