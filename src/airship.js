@@ -273,6 +273,7 @@ export default class Airship extends Environment {
   updateSDK() {
     const ingestionMaxItems = this.router.getIngestionMaxItem()
     const ingestionInterval = this.router.getIngestionInterval()
+    const browserIngestionInterval = this.router.getBrowserIngestionInterval()
     const shouldIngestObjects = this.router.getShouldIngestObjects()
     const shouldIngestStats = this.router.getShouldIngestStats()
     const shouldIngestExposures = this.router.getShouldIngestExposures()
@@ -281,13 +282,24 @@ export default class Airship extends Environment {
     if (typeof ingestionMaxItems === 'number' && ingestionMaxItems > 0) {
       this.ingestionMaxItems = ingestionMaxItems
     }
-    if (
-      typeof ingestionInterval === 'number' &&
-      ingestionInterval > 0 &&
-      ingestionInterval != this.ingestionInterval
-    ) {
-      this.ingestionInterval = ingestionInterval
-      this.restartIngestionWorker()
+    if (__BROWSER__) {
+      if (
+        typeof browserIngestionInterval === 'number' &&
+        browserIngestionInterval > 0 &&
+        browserIngestionInterval != this.ingestionInterval
+      ) {
+        this.ingestionInterval = browserIngestionInterval
+        this.restartIngestionWorker()
+      }
+    } else {
+      if (
+        typeof ingestionInterval === 'number' &&
+        ingestionInterval > 0 &&
+        ingestionInterval != this.ingestionInterval
+      ) {
+        this.ingestionInterval = ingestionInterval
+        this.restartIngestionWorker()
+      }
     }
     if (typeof shouldIngestObjects === 'boolean') {
       this.shouldIngestObjects = shouldIngestObjects
