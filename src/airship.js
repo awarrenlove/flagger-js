@@ -22,6 +22,12 @@ const CLOUD_FRONT_GATING_INFO_ENDPOINT = `${CLOUD_FRONT_URL}/v2/gating-info`
 
 const REQUEST_TIMEOUT = 10 * 1000
 
+// Default ingestion parameters
+DEFAULT_INGESTION_INTERVAL = 30
+DEFAULT_BROWSER_INGESTION_INTERVAL = 5
+DEFAULT_INGESTION_MAX_ITEMS = 500
+DEFAULT_BROWSER_INGESTION_MAX_ITEMS = 1
+
 export default class Airship extends Environment {
   constructor(gatingInfoListener) {
     super()
@@ -32,7 +38,12 @@ export default class Airship extends Environment {
 
   init() {
     this.ingestionMaxItems = 500
-    this.ingestionInterval = 30 * 1000
+    this.ingestionInterval = DEFAULT_INGESTION_INTERVAL * 1000
+
+    if (__BROWSER__) {
+      this.ingestionMaxItems = DEFAULT_INGESTION_MAX_ITEMS
+      this.ingestionInterval = DEFAULT_BROWSER_INGESTION_INTERVAL * 1000
+    }
 
     this.objects = []
     this.stats = []
@@ -272,6 +283,7 @@ export default class Airship extends Environment {
 
   updateSDK() {
     const ingestionMaxItems = this.router.getIngestionMaxItem()
+    const browserIngestionMaxItems = this.router.getBrowserIngestionMaxItems()
     const ingestionInterval = this.router.getIngestionInterval()
     const browserIngestionInterval = this.router.getBrowserIngestionInterval()
     const shouldIngestObjects = this.router.getShouldIngestObjects()
@@ -279,10 +291,16 @@ export default class Airship extends Environment {
     const shouldIngestExposures = this.router.getShouldIngestExposures()
     const shouldIngestFlags = this.router.getShouldIngestFlags()
 
-    if (typeof ingestionMaxItems === 'number' && ingestionMaxItems > 0) {
-      this.ingestionMaxItems = ingestionMaxItems
-    }
     if (__BROWSER__) {
+      // Use SDK info's browserIngestionMaxItems threshold instead (if it exists)
+      if (
+        typeof browserIngestionMaxItems === 'number' &&
+        browserIngestionMaxItems > 0
+      ) {
+        this.ingestionMaxItems = browserIngestionMaxItems
+      }
+
+      // Use SDK info's ingestionInterval instead (if it exists)
       if (
         typeof browserIngestionInterval === 'number' &&
         browserIngestionInterval > 0 &&
@@ -292,6 +310,12 @@ export default class Airship extends Environment {
         this.restartIngestionWorker()
       }
     } else {
+      // Use SDK info's ingestionMaxItem threshold instead (if it exists)
+      if (typeof ingestionMaxItems === 'number' && ingestionMaxItems > 0) {
+        this.ingestionMaxItems = ingestionMaxItems
+      }
+
+      // Use SDK info's ingestionInterval instead (if it exists)
       if (
         typeof ingestionInterval === 'number' &&
         ingestionInterval > 0 &&
@@ -301,15 +325,23 @@ export default class Airship extends Environment {
         this.restartIngestionWorker()
       }
     }
+
+    // Check if SDK info directs SDK to ingest entities
     if (typeof shouldIngestObjects === 'boolean') {
       this.shouldIngestObjects = shouldIngestObjects
     }
+
+    // Check if SDK info directs SDK to ingest stats
     if (typeof shouldIngestStats === 'boolean') {
       this.shouldIngestStats = shouldIngestStats
     }
+
+    // Check if SDK info directs SDK to ingest exposures
     if (typeof shouldIngestExposures === 'boolean') {
       this.shouldIngestExposures = shouldIngestExposures
     }
+
+    // Check if SDK info directs SDK to ingest flags
     if (typeof shouldIngestFlags === 'boolean') {
       this.shouldIngestFlags = shouldIngestFlags
     }
