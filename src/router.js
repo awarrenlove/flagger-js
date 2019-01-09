@@ -61,6 +61,14 @@ export default class Router {
     return null
   }
 
+  getBrowserIngestionMaxItems() {
+    const sdkInfo = this.gatingInfo.sdkInfo
+    if (sdkInfo) {
+      return sdkInfo.SDK_BROWSER_INGESTION_MAX_ITEMS
+    }
+    return null
+  }
+
   getIngestionInterval() {
     const sdkInfo = this.gatingInfo.sdkInfo
     if (sdkInfo) {
