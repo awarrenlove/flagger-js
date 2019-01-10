@@ -14,7 +14,7 @@
   "scripts": {
     "prepublishOnly": "npm run build",
     "build": "rollup -c",
-    "test": "jest",
+    "test": "jest --silent",
     "coverage": "codecov",
     "lint": "eslint src",
     "clear_jest": "jest --clearCache"
