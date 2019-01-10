@@ -32,7 +32,7 @@ export class FlaggerBase {
     const flagConfig = options.flagConfig
 
     if (!envKey && !flagConfig) {
-      throw '<options> must contain envKey corresponding to an environment key or a flagConfig dictionary'
+      throw '<options> must contain envKey corresponding to an environment key or a flagConfig dictionary to configure locally'
     }
 
     const subscribeToUpdates =
@@ -54,7 +54,8 @@ export class FlaggerBase {
         this.environment = new Airship(this.handleGatingInfoUpdate.bind(this))
         const promise = this.environment.configure(
           envKey,
-          options.subscribeToUpdates
+          options.subscribeToUpdates,
+          options.apiDomain
         )
         this.environment.environmentPromise = promise
         await promise

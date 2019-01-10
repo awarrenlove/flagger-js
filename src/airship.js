@@ -10,15 +10,19 @@ import * as http from 'http'
 import * as https from 'https'
 import * as URL from 'url'
 
-const SERVER_URL = 'https://api.airshiphq.com'
-const IDENTIFY_ENDPOINT = `${SERVER_URL}/v2/identify`
-const GATING_INFO_ENDPOINT = `${SERVER_URL}/v2/gating-info`
+// Default API domain
+const DEFAULT_API_DOMAIN = 'airshiphq.com'
 
-const SSE_URL = 'https://sse.airshiphq.com'
-const SSE_GATING_INFO_ENDPOINT = `${SSE_URL}/v2/sse-events`
+// Primary API endpoints
+const IDENTIFY_ENDPOINT = `/v2/identify`
+const GATING_INFO_ENDPOINT = `/v2/gating-info`
 
-const CLOUD_FRONT_URL = 'https://backup-api.airshiphq.com'
-const CLOUD_FRONT_GATING_INFO_ENDPOINT = `${CLOUD_FRONT_URL}/v2/gating-info`
+// SSE API endpoints
+const SSE_GATING_INFO_ENDPOINT = `/v2/sse-events`
+
+// Backup API URL & endpoint
+const BACKUP_URL = 'https://backup-api.airshiphq.com'
+const BACKUP_GATING_INFO_ENDPOINT = `${BACKUP_URL}/v2/gating-info`
 
 const REQUEST_TIMEOUT = 10 * 1000
 
@@ -126,7 +130,7 @@ export default class Airship extends Environment {
       this.flags = new Set()
 
       await this.postContent(
-        IDENTIFY_ENDPOINT + '/' + this.envKey,
+        this.primaryServerUrl + IDENTIFY_ENDPOINT + '/' + this.envKey,
         JSON.stringify({
           objects: objects,
           stats: stats.map(s => s.getStatsObj()).filter(so => so !== null),
@@ -270,14 +274,16 @@ export default class Airship extends Environment {
 
   async _getGatingInfo() {
     const body = await this.getContent(
-      `${GATING_INFO_ENDPOINT}/${this.envKey}?casing=camel`
+      `${this.primaryServerUrl}${GATING_INFO_ENDPOINT}/${
+        this.envKey
+      }?casing=camel`
     )
     return JSON.parse(body)
   }
 
-  async _getGatingInfoFromCloudFront() {
+  async _getBackupGatingInfo() {
     const body = await this.getContent(
-      `${CLOUD_FRONT_GATING_INFO_ENDPOINT}/${this.envKey}-camel`
+      `${BACKUP_GATING_INFO_ENDPOINT}/${this.envKey}-camel`
     )
     return JSON.parse(body)
   }
@@ -370,7 +376,11 @@ export default class Airship extends Environment {
     return true
   }
 
-  async configure(envKey, subscribeToUpdates = true) {
+  async configure(
+    envKey,
+    subscribeToUpdates = true,
+    apiDomain = DEFAULT_API_DOMAIN
+  ) {
     const envKeyRegex = /^[a-z0-9]{16}$/
     if (!envKey.match(envKeyRegex)) {
       throw 'options["envKey"] should be a string of lowercase characters and digits. Double check on the Airship web app.'
@@ -378,21 +388,25 @@ export default class Airship extends Environment {
 
     this.envKey = envKey
     this.subscribeToUpdates = subscribeToUpdates
+
+    this.primaryServerUrl = `https://api.${apiDomain}`
+    this.sseServerUrl = `https://sse.${apiDomain}`
+
     this.init()
 
     this.failed = false
 
-    // First try our server
+    // First try the Airship server
     if (
       !(await this.updateGatingInfo(
         'duration__gating_info',
         this._getGatingInfo.bind(this)
       ))
     ) {
-      // Then try CloudFront distribution
+      // Then try the Airship CloudFront distribution
       this.failed = !(await this.updateGatingInfo(
         'duration__cloudfront_gating_info',
-        this._getGatingInfoFromCloudFront.bind(this)
+        this._getBackupGatingInfo.bind(this)
       ))
     }
 
@@ -451,7 +465,7 @@ export default class Airship extends Environment {
         )
         this.updateGatingInfo(
           'duration__cloudfront_gating_info',
-          this._getGatingInfoFromCloudFront.bind(this)
+          this._getBackupGatingInfo.bind(this)
         ).then(
           () => logger('Polled gating info from CloudFront'),
           () => logger('Failed polling gating info from CloudFront')
@@ -480,7 +494,9 @@ export default class Airship extends Environment {
     this._unsubscribeFromUpdates()
 
     this.eventSource = new EventSource(
-      `${SSE_GATING_INFO_ENDPOINT}?envkey=${this.envKey}&casing=camel`
+      `${this.sseServerUrl}${SSE_GATING_INFO_ENDPOINT}?envkey=${
+        this.envKey
+      }&casing=camel`
     )
     this.eventSource.addEventListener('gatingInfoUpdate', evt => {
       const gatingInfo = JSON.parse(evt.data)
