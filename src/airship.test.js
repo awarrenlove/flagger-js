@@ -2,7 +2,6 @@ import nock from 'nock'
 import sinon from 'sinon'
 
 import Airship from './airship'
-import Stat from './stat'
 
 let environment1, environment2
 
@@ -911,27 +910,6 @@ test('whitelist group treatment takes precedence over individual sampling', () =
   expect(
     environment2.flag('bitcoin-pay').getTreatment({id: 3, group: {id: 9}})
   ).toEqual('default')
-})
-
-test('gate call should have non-null stat', () => {
-  environment2.flag('bitcoin-pay').isEnabled({id: 1})
-  expect(environment2.stats).toHaveLength(1)
-  expect(environment2.stats[0] instanceof Stat).toEqual(true)
-  const statObj = environment2.stats[0].getStatsObj()
-  expect(statObj).not.toBe(null)
-  expect(statObj.count).toEqual(1)
-})
-
-test('same gate calls should produce stats that can be combined', () => {
-  environment2.flag('bitcoin-pay').isEnabled({id: 1})
-  environment2.flag('bitcoin-pay').isEnabled({id: 1})
-  expect(environment2.stats).toHaveLength(2)
-  environment2._compactStats()
-  expect(environment2.stats).toHaveLength(1)
-  expect(environment2.stats[0] instanceof Stat).toEqual(true)
-  const statObj = environment2.stats[0].getStatsObj()
-  expect(statObj).not.toBe(null)
-  expect(statObj.count).toEqual(2)
 })
 
 test('getContent should work', async () => {
