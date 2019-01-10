@@ -539,14 +539,6 @@ class Population {
       };
     }
 
-    const splits = sticky ? this.population.universes[Math.floor(parseInt(this.population.percentage * 100)) - 1] : flag.splits;
-    const splitsMap = {};
-
-    for (let i = 0; i < splits.length; i++) {
-      const split = splits[i];
-      splitsMap[split.treatmentId] = split;
-    }
-
     const rules = population.rules;
     let matches = true;
 
@@ -557,12 +549,15 @@ class Population {
 
     if (matches) {
       const samplingHashKey = `SAMPLING:control_${flag.hashKey}:env_${env.hashKey}:rule_set_${this.population.hashKey}:client_object_${obj.type}_${obj.id}`;
+      const hashedPercentage = getHashedValue(samplingHashKey);
 
-      if (getHashedValue(samplingHashKey) <= this.population.percentage) {
-        if (this.population.percentage === 0) {
-          return {
-            eligible: false
-          };
+      if (hashedPercentage <= this.population.percentage && this.population.percentage > 0) {
+        const splits = sticky ? this.population.universes[Math.max(Math.floor(hashedPercentage * 100) - 1, 0)] : flag.splits;
+        const splitsMap = {};
+
+        for (let i = 0; i < splits.length; i++) {
+          const split = splits[i];
+          splitsMap[split.treatmentId] = split;
         }
 
         const allocationHashKey = `DISTRIBUTION:control_${flag.hashKey}:env_${env.hashKey}:client_object_${obj.type}_${obj.id}`;
@@ -927,7 +922,8 @@ class Environment {
       id: obj.id,
       treatment: alloc.treatment.codename,
       methodCalled: methodCalled,
-      eligible: alloc.eligible
+      eligible: alloc.eligible,
+      timeExposed: new Date().toISOString()
     };
   }
 
@@ -956,7 +952,7 @@ class Environment {
 
     this._saveStat(stat);
 
-    return finalAllocation.treatment.codename;
+    return finalAllocation.treatment.isGhost ? flag.offTreatment && flag.offTreatment.codename || 'off' : finalAllocation.treatment.codename;
   }
 
   getPayload(flag, obj) {
@@ -984,7 +980,7 @@ class Environment {
 
     this._saveStat(stat);
 
-    return finalAllocation.treatment.payload;
+    return finalAllocation.treatment.isGhost ? flag.offTreatment && flag.offTreatment.payload || null : finalAllocation.treatment.payload;
   }
 
   isEligible(flag, obj) {
@@ -1230,11 +1226,31 @@ class Router {
     return null;
   }
 
+  getBrowserIngestionMaxItems() {
+    const sdkInfo = this.gatingInfo.sdkInfo;
+
+    if (sdkInfo) {
+      return sdkInfo.SDK_BROWSER_INGESTION_MAX_ITEMS;
+    }
+
+    return null;
+  }
+
   getIngestionInterval() {
     const sdkInfo = this.gatingInfo.sdkInfo;
 
     if (sdkInfo) {
       return sdkInfo.SDK_INGESTION_INTERVAL * 1000;
+    }
+
+    return null;
+  }
+
+  getBrowserIngestionInterval() {
+    const sdkInfo = this.gatingInfo.sdkInfo;
+
+    if (sdkInfo) {
+      return sdkInfo.SDK_BROWSER_INGESTION_INTERVAL * 1000;
     }
 
     return null;
@@ -1303,7 +1319,10 @@ const SSE_URL = 'https://sse.airshiphq.com';
 const SSE_GATING_INFO_ENDPOINT = `${SSE_URL}/v2/sse-events`;
 const CLOUD_FRONT_URL = 'https://backup-api.airshiphq.com';
 const CLOUD_FRONT_GATING_INFO_ENDPOINT = `${CLOUD_FRONT_URL}/v2/gating-info`;
-const REQUEST_TIMEOUT = 10 * 1000;
+const REQUEST_TIMEOUT = 10 * 1000; // Default ingestion parameters
+
+const DEFAULT_INGESTION_INTERVAL = 30;
+const DEFAULT_INGESTION_MAX_ITEMS = 500;
 class Airship extends Environment {
   constructor(gatingInfoListener) {
     super();
@@ -1312,8 +1331,9 @@ class Airship extends Environment {
   }
 
   init() {
-    this.ingestionMaxItems = 500;
-    this.ingestionInterval = 30 * 1000;
+    this.ingestionMaxItems = DEFAULT_INGESTION_MAX_ITEMS;
+    this.ingestionInterval = DEFAULT_INGESTION_INTERVAL * 1000; // eslint-disable-next-line no-undef
+
     this.objects = [];
     this.stats = [];
     this.exposures = [];
@@ -1515,32 +1535,42 @@ class Airship extends Environment {
 
   updateSDK() {
     const ingestionMaxItems = this.router.getIngestionMaxItem();
+    const browserIngestionMaxItems = this.router.getBrowserIngestionMaxItems();
     const ingestionInterval = this.router.getIngestionInterval();
+    const browserIngestionInterval = this.router.getBrowserIngestionInterval();
     const shouldIngestObjects = this.router.getShouldIngestObjects();
     const shouldIngestStats = this.router.getShouldIngestStats();
     const shouldIngestExposures = this.router.getShouldIngestExposures();
-    const shouldIngestFlags = this.router.getShouldIngestFlags();
+    const shouldIngestFlags = this.router.getShouldIngestFlags(); // eslint-disable-next-line no-undef
 
-    if (typeof ingestionMaxItems === 'number' && ingestionMaxItems > 0) {
-      this.ingestionMaxItems = ingestionMaxItems;
-    }
+    {
+      // Use SDK info's ingestionMaxItem threshold instead (if it exists)
+      if (typeof ingestionMaxItems === 'number' && ingestionMaxItems > 0) {
+        this.ingestionMaxItems = ingestionMaxItems;
+      } // Use SDK info's ingestionInterval instead (if it exists)
 
-    if (typeof ingestionInterval === 'number' && ingestionInterval > 0 && ingestionInterval != this.ingestionInterval) {
-      this.ingestionInterval = ingestionInterval;
-      this.restartIngestionWorker();
-    }
+
+      if (typeof ingestionInterval === 'number' && ingestionInterval > 0 && ingestionInterval != this.ingestionInterval) {
+        this.ingestionInterval = ingestionInterval;
+        this.restartIngestionWorker();
+      }
+    } // Check if SDK info directs SDK to ingest entities
+
 
     if (typeof shouldIngestObjects === 'boolean') {
       this.shouldIngestObjects = shouldIngestObjects;
-    }
+    } // Check if SDK info directs SDK to ingest stats
+
 
     if (typeof shouldIngestStats === 'boolean') {
       this.shouldIngestStats = shouldIngestStats;
-    }
+    } // Check if SDK info directs SDK to ingest exposures
+
 
     if (typeof shouldIngestExposures === 'boolean') {
       this.shouldIngestExposures = shouldIngestExposures;
-    }
+    } // Check if SDK info directs SDK to ingest flags
+
 
     if (typeof shouldIngestFlags === 'boolean') {
       this.shouldIngestFlags = shouldIngestFlags;

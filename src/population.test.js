@@ -1,3 +1,4 @@
+import Population from './population'
 import {getHashedValue} from './population'
 
 test('hashing consistency across platforms', () => {
