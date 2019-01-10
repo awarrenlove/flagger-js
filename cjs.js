@@ -1312,13 +1312,15 @@ class Router {
 
 var version = "2.0.3";
 
-const SERVER_URL = 'https://api.airshiphq.com';
-const IDENTIFY_ENDPOINT = `${SERVER_URL}/v2/identify`;
-const GATING_INFO_ENDPOINT = `${SERVER_URL}/v2/gating-info`;
-const SSE_URL = 'https://sse.airshiphq.com';
-const SSE_GATING_INFO_ENDPOINT = `${SSE_URL}/v2/sse-events`;
-const CLOUD_FRONT_URL = 'https://backup-api.airshiphq.com';
-const CLOUD_FRONT_GATING_INFO_ENDPOINT = `${CLOUD_FRONT_URL}/v2/gating-info`;
+const DEFAULT_API_DOMAIN = 'airshiphq.com'; // Primary API endpoints
+
+const IDENTIFY_ENDPOINT = `/v2/identify`;
+const GATING_INFO_ENDPOINT = `/v2/gating-info`; // SSE API endpoints
+
+const SSE_GATING_INFO_ENDPOINT = `/v2/sse-events`; // Backup API URL & endpoint
+
+const BACKUP_URL = 'https://backup-api.airshiphq.com';
+const BACKUP_GATING_INFO_ENDPOINT = `${BACKUP_URL}/v2/gating-info`;
 const REQUEST_TIMEOUT = 10 * 1000; // Default ingestion parameters
 
 const DEFAULT_INGESTION_INTERVAL = 30;
@@ -1398,7 +1400,7 @@ class Airship extends Environment {
       this.stats = [];
       this.exposures = [];
       this.flags = new Set();
-      await this.postContent(IDENTIFY_ENDPOINT + '/' + this.envKey, JSON.stringify({
+      await this.postContent(this.primaryServerUrl + IDENTIFY_ENDPOINT + '/' + this.envKey, JSON.stringify({
         objects: objects,
         stats: stats.map(s => s.getStatsObj()).filter(so => so !== null),
         exposures: exposures,
@@ -1524,12 +1526,12 @@ class Airship extends Environment {
   }
 
   async _getGatingInfo() {
-    const body = await this.getContent(`${GATING_INFO_ENDPOINT}/${this.envKey}?casing=camel`);
+    const body = await this.getContent(`${this.primaryServerUrl}${GATING_INFO_ENDPOINT}/${this.envKey}?casing=camel`);
     return JSON.parse(body);
   }
 
-  async _getGatingInfoFromCloudFront() {
-    const body = await this.getContent(`${CLOUD_FRONT_GATING_INFO_ENDPOINT}/${this.envKey}-camel`);
+  async _getBackupGatingInfo() {
+    const body = await this.getContent(`${BACKUP_GATING_INFO_ENDPOINT}/${this.envKey}-camel`);
     return JSON.parse(body);
   }
 
@@ -1601,7 +1603,7 @@ class Airship extends Environment {
     return true;
   }
 
-  async configure(envKey, subscribeToUpdates = true) {
+  async configure(envKey, subscribeToUpdates = true, apiDomain = DEFAULT_API_DOMAIN) {
     const envKeyRegex = /^[a-z0-9]{16}$/;
 
     if (!envKey.match(envKeyRegex)) {
@@ -1610,12 +1612,14 @@ class Airship extends Environment {
 
     this.envKey = envKey;
     this.subscribeToUpdates = subscribeToUpdates;
+    this.primaryServerUrl = `https://api.${apiDomain}`;
+    this.sseServerUrl = `https://sse.${apiDomain}`;
     this.init();
-    this.failed = false; // First try our server
+    this.failed = false; // First try the Airship server
 
     if (!(await this.updateGatingInfo('duration__gating_info', this._getGatingInfo.bind(this)))) {
-      // Then try CloudFront distribution
-      this.failed = !(await this.updateGatingInfo('duration__cloudfront_gating_info', this._getGatingInfoFromCloudFront.bind(this)));
+      // Then try the Airship CloudFront distribution
+      this.failed = !(await this.updateGatingInfo('duration__cloudfront_gating_info', this._getBackupGatingInfo.bind(this)));
     }
 
     if (this.failed) {
@@ -1674,7 +1678,7 @@ class Airship extends Environment {
 
       if ((now - then) / 1000 > 60) {
         logger('Did not receive a keepalive for more than 30 seconds. Polling gating info.');
-        this.updateGatingInfo('duration__cloudfront_gating_info', this._getGatingInfoFromCloudFront.bind(this)).then(() => logger('Polled gating info from CloudFront'), () => logger('Failed polling gating info from CloudFront'));
+        this.updateGatingInfo('duration__cloudfront_gating_info', this._getBackupGatingInfo.bind(this)).then(() => logger('Polled gating info from CloudFront'), () => logger('Failed polling gating info from CloudFront'));
       }
     }, 60 * 1000);
   }
@@ -1698,7 +1702,7 @@ class Airship extends Environment {
   _subscribeToUpdates() {
     this._unsubscribeFromUpdates();
 
-    this.eventSource = new EventSource(`${SSE_GATING_INFO_ENDPOINT}?envkey=${this.envKey}&casing=camel`);
+    this.eventSource = new EventSource(`${this.sseServerUrl}${SSE_GATING_INFO_ENDPOINT}?envkey=${this.envKey}&casing=camel`);
     this.eventSource.addEventListener('gatingInfoUpdate', evt => {
       const gatingInfo = JSON.parse(evt.data);
       this.router = new Router(gatingInfo);
@@ -2032,7 +2036,7 @@ class FlaggerBase {
     const flagConfig = options.flagConfig;
 
     if (!envKey && !flagConfig) {
-      throw '<options> must contain envKey corresponding to an environment key or a flagConfig dictionary';
+      throw '<options> must contain envKey corresponding to an environment key or a flagConfig dictionary to configure locally';
     }
 
     const subscribeToUpdates = options.subscribeToUpdates === false ? false : true;
@@ -2046,7 +2050,7 @@ class FlaggerBase {
         }
 
         this.environment = new Airship(this.handleGatingInfoUpdate.bind(this));
-        const promise = this.environment.configure(envKey, options.subscribeToUpdates);
+        const promise = this.environment.configure(envKey, options.subscribeToUpdates, options.apiDomain);
         this.environment.environmentPromise = promise;
         await promise;
       }
