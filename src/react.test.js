@@ -172,6 +172,17 @@ test('withFlag wrapped components accept entity prop', () => {
   expect(component.toJSON()).toMatchSnapshot()
 })
 
+test('withFlag wrapped components handles invalid flag name', () => {
+  function TestComponent(props) {
+    return <div>{props.flags['unreal-flag'].enabled.toString()}</div>
+  }
+  const WrappedComponent = withFlag(TestComponent, 'unreal-flag')
+
+  const component = renderer.create(<WrappedComponent entity={{id: 2}} />)
+
+  expect(component.toJSON()).toMatchSnapshot()
+})
+
 test('FlagSwitch accepts entity prop', () => {
   const component = renderer.create(
     <FlagSwitch flag="bitcoin-pay" entity={{id: 2}}>
