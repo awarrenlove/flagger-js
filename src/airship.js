@@ -40,8 +40,9 @@ export default class Airship extends Environment {
     this.ingestionMaxItems = DEFAULT_INGESTION_MAX_ITEMS
     this.ingestionInterval = DEFAULT_INGESTION_INTERVAL * 1000
 
+    // eslint-disable-next-line no-undef
     if (__BROWSER__) {
-      this.ingestionMaxItems = DEFAULT_INGESTION_MAX_ITEMS
+      this.ingestionMaxItems = DEFAULT_BROWSER_INGESTION_MAX_ITEMS
       this.ingestionInterval = DEFAULT_BROWSER_INGESTION_INTERVAL * 1000
     }
 
@@ -291,6 +292,7 @@ export default class Airship extends Environment {
     const shouldIngestExposures = this.router.getShouldIngestExposures()
     const shouldIngestFlags = this.router.getShouldIngestFlags()
 
+    // eslint-disable-next-line no-undef
     if (__BROWSER__) {
       // Use SDK info's browserIngestionMaxItems threshold instead (if it exists)
       if (
