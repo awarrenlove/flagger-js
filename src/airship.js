@@ -30,7 +30,7 @@ const REQUEST_TIMEOUT = 10 * 1000
 const DEFAULT_INGESTION_INTERVAL = 30
 const DEFAULT_BROWSER_INGESTION_INTERVAL = 15
 const DEFAULT_INGESTION_MAX_ITEMS = 500
-const DEFAULT_BROWSER_INGESTION_MAX_ITEMS = 1
+const DEFAULT_BROWSER_INGESTION_MAX_ITEMS = 5
 
 export default class Airship extends Environment {
   constructor(gatingInfoListener) {
@@ -306,6 +306,7 @@ export default class Airship extends Environment {
         browserIngestionMaxItems > 0
       ) {
         this.ingestionMaxItems = browserIngestionMaxItems
+        this.restartIngestionWorker()
       }
 
       // Use SDK info's ingestionInterval instead (if it exists)
@@ -321,6 +322,7 @@ export default class Airship extends Environment {
       // Use SDK info's ingestionMaxItem threshold instead (if it exists)
       if (typeof ingestionMaxItems === 'number' && ingestionMaxItems > 0) {
         this.ingestionMaxItems = ingestionMaxItems
+        this.restartIngestionWorker()
       }
 
       // Use SDK info's ingestionInterval instead (if it exists)
