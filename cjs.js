@@ -1310,7 +1310,7 @@ class Router {
 
 }
 
-var version = "2.0.3";
+var version = "2.0.4";
 
 const DEFAULT_API_DOMAIN = 'airshiphq.com'; // Primary API endpoints
 
@@ -1549,6 +1549,7 @@ class Airship extends Environment {
       // Use SDK info's ingestionMaxItem threshold instead (if it exists)
       if (typeof ingestionMaxItems === 'number' && ingestionMaxItems > 0) {
         this.ingestionMaxItems = ingestionMaxItems;
+        this.restartIngestionWorker();
       } // Use SDK info's ingestionInterval instead (if it exists)
 
 
