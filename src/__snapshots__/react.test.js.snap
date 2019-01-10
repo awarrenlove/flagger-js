@@ -37,3 +37,9 @@ exports[`withFlag wrapped components accept entity prop 1`] = `
   false
 </div>
 `;
+
+exports[`withFlag wrapped components handles invalid flag name 1`] = `
+<div>
+  false
+</div>
+`;

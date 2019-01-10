@@ -641,3 +641,16 @@ test('second configure blocks on first configure', async () => {
   nock.cleanAll()
   nock.enableNetConnect()
 })
+
+test('Identify called before configure throws error', () => {
+  const func = () => {
+    Flagger.identify({id: 1})
+  }
+  expect(func).toThrow()
+})
+
+test('Flagger must be configured before shutdown', () => {
+  expect(Flagger.shutdown()).rejects.toEqual(
+    'Airship must be configured first before `shutdown` can be called'
+  )
+})

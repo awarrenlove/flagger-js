@@ -57,3 +57,8 @@ test('compacting counts totals count', () => {
     stat3.count + stat4.count
   )
 })
+
+test('count returned is accurate', () => {
+  stat3.setCount(5)
+  expect(stat3.getStatsObj().count).toEqual(5)
+})
