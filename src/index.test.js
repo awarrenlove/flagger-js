@@ -642,21 +642,6 @@ test('second configure blocks on first configure', async () => {
   nock.enableNetConnect()
 })
 
-test('second configure blocks on first configure', async () => {
-  nockCloud1()
-  nock.disableNetConnect()
-
-  await Flagger.configure({envKey: 'onz2150xjon6pkjr'})
-  await Flagger.configure({envKey: 'onz2150xjon6pkjr'})
-  // By configuring again and only nocking once, if it tried to
-  // fetch for gating-info a second time, it would fail.
-
-  await Flagger.shutdown()
-
-  nock.cleanAll()
-  nock.enableNetConnect()
-})
-
 test('Identify called before configure throws error', () => {
   const func = () => {
     Flagger.identify({id: 1})
@@ -665,5 +650,7 @@ test('Identify called before configure throws error', () => {
 })
 
 test('Flagger must be configured before shutdown', () => {
-  expect(Flagger.shutdown()).rejects.toEqual(new Error('Test'))
+  expect(Flagger.shutdown()).rejects.toEqual(
+    'Airship must be configured first before `shutdown` can be called'
+  )
 })

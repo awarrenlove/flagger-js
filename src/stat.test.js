@@ -57,3 +57,14 @@ test('compacting counts totals count', () => {
     stat3.count + stat4.count
   )
 })
+
+test('duration returned is accurate', () => {
+  stat1.start()
+  setTimeout(stat1.stop(), 10)
+  expect(stat1.getStatsObj().count === 10)
+})
+
+test('count returned is accurate', () => {
+  stat3.setCount(5)
+  expect(stat3.getStatsObj().count === 5)
+})
