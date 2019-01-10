@@ -37,7 +37,7 @@ export default class Airship extends Environment {
   }
 
   init() {
-    this.ingestionMaxItems = 500
+    this.ingestionMaxItems = DEFAULT_INGESTION_MAX_ITEMS
     this.ingestionInterval = DEFAULT_INGESTION_INTERVAL * 1000
 
     if (__BROWSER__) {
