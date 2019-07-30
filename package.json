@@ -40,6 +40,7 @@
     "husky": "^1.1.0",
     "jest": "^23.5.0",
     "nock": "^9.6.1",
+    "node-fetch": "^2.6.0",
     "nodemon": "^1.18.3",
     "prettier": "^1.14.3",
     "pretty-quick": "^1.7.0",
@@ -59,8 +60,6 @@
   "dependencies": {
     "@babel/runtime": "^7.0.0",
     "@babel/runtime-corejs2": "^7.0.0",
-    "ajv": "^6.5.3",
-    "ajv-errors": "^1.0.0",
     "eventsource": "^1.0.7",
     "md5": "^2.2.1",
     "prop-types": "^15.6.2"
