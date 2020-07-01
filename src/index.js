@@ -55,7 +55,9 @@ export class FlaggerBase {
         const promise = this.environment.configure(
           envKey,
           options.subscribeToUpdates,
-          options.apiDomain
+          options.apiDomain,
+          options.serverUrl,
+          options.sseUrl
         )
         this.environment.environmentPromise = promise
         await promise
