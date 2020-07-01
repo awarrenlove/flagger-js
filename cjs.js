@@ -1604,7 +1604,7 @@ class Airship extends Environment {
     return true;
   }
 
-  async configure(envKey, subscribeToUpdates = true, apiDomain = DEFAULT_API_DOMAIN) {
+  async configure(envKey, subscribeToUpdates = true, apiDomain = DEFAULT_API_DOMAIN, serverUrl, sseUrl) {
     const envKeyRegex = /^[a-z0-9]{16}$/;
 
     if (!envKey.match(envKeyRegex)) {
@@ -1613,8 +1613,19 @@ class Airship extends Environment {
 
     this.envKey = envKey;
     this.subscribeToUpdates = subscribeToUpdates;
-    this.primaryServerUrl = `https://api.${apiDomain}`;
-    this.sseServerUrl = `https://sse.${apiDomain}`;
+
+    if (serverUrl) {
+      this.primaryServerUrl = serverUrl;
+    } else {
+      this.primaryServerUrl = `https://api.${apiDomain}`;
+    }
+
+    if (sseUrl) {
+      this.sseServerUrl = sseUrl;
+    } else {
+      this.sseServerUrl = `https://sse.${apiDomain}`;
+    }
+
     this.init();
     this.failed = false; // First try the Airship server
 
@@ -2051,7 +2062,7 @@ class FlaggerBase {
         }
 
         this.environment = new Airship(this.handleGatingInfoUpdate.bind(this));
-        const promise = this.environment.configure(envKey, options.subscribeToUpdates, options.apiDomain);
+        const promise = this.environment.configure(envKey, options.subscribeToUpdates, options.apiDomain, options.serverUrl, options.sseUrl);
         this.environment.environmentPromise = promise;
         await promise;
       }
